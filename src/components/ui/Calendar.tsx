@@ -43,7 +43,7 @@ function Calendar({
       <div className="mb-4 flex items-center justify-between border-b border-outline-variant/20 pb-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-            Schedule & Calendar
+            Calendar
           </p>
           <h2 className="mt-1 text-[15px] font-medium text-on-surface sm:text-[16px]">
             {monthLabel}

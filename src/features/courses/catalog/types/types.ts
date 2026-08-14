@@ -13,7 +13,9 @@ export interface Course {
   imageAlt: string;
   badge?: string;
   badgeColor?: "tertiary" | "secondary";
+  tags?: Array<"New" | "Hot">;
+  publishedAt?: string | null;
 }
 
 export type Category = string;
-export type SortOption = string;
+export type SortOption = "default" | "newest" | "oldest";

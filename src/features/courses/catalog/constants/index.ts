@@ -7,7 +7,7 @@ export const courses: Course[] = [];
 export const categories: Category[] = [...catalogCategories];
 
 export const sortOptions: SortOption[] = [
-  "Recommended",
-  "Newest",
-  "Most Popular",
+  "default",
+  "newest",
+  "oldest",
 ];

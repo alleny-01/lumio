@@ -65,6 +65,7 @@ export interface Database {
           title: string;
           slug: string;
           description: string;
+          learning_outcomes: string[];
           thumbnail_url: string | null;
           category: string;
           difficulty: CourseDifficulty;
@@ -83,6 +84,7 @@ export interface Database {
           title: string;
           slug: string;
           description?: string;
+          learning_outcomes?: string[];
           thumbnail_url?: string | null;
           category?: string;
           difficulty?: CourseDifficulty;
@@ -99,6 +101,7 @@ export interface Database {
           title?: string;
           slug?: string;
           description?: string;
+          learning_outcomes?: string[];
           thumbnail_url?: string | null;
           category?: string;
           difficulty?: CourseDifficulty;

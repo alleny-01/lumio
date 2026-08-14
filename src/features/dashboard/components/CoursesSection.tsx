@@ -14,6 +14,14 @@ export function CoursesSection({
   title = "My courses",
   showAllLink = true,
 }: CoursesSectionProps) {
+  const courseGridClassName =
+    courses.length === 1
+      ? "grid gap-3"
+      : courses.length === 2
+        ? "grid gap-3 md:grid-cols-2"
+        : "grid gap-3 md:grid-cols-2 xl:grid-cols-3";
+  const shouldUseCompactWideCards = courses.length < 3;
+
   return (
     <section>
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -21,7 +29,7 @@ export function CoursesSection({
         {showAllLink && courses.length > 0 && (
           <Link
             to="/learning"
-            className="inline-flex items-center gap-1 text-[13px] font-normal text-primary transition-colors hover:text-primary/80"
+            className="inline-flex items-center gap-1 rounded-sm text-[13px] font-normal text-primary transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           >
             All courses
             <ChevronRight className="size-3.5" />
@@ -34,7 +42,7 @@ export function CoursesSection({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
-          className="rounded-sm border border-border/40 bg-surface-container-lowest px-5 py-8 text-center shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)]"
+          className="rounded-sm  bg-surface-container-lowest px-5 py-8 text-center shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)]"
         >
           <div className="mx-auto flex size-11 items-center justify-center rounded-sm bg-primary-fixed text-primary">
             <BookOpenCheck className="size-5" />
@@ -47,14 +55,14 @@ export function CoursesSection({
           </p>
           <Link
             to="/courses"
-            className="mt-5 inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-[12px] font-medium text-on-primary transition-colors hover:bg-primary-container"
+            className="mt-5 inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-[12px] font-medium text-on-primary transition-colors hover:bg-primary-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           >
             Browse course catalog
             <ChevronRight className="size-3.5" />
           </Link>
         </motion.div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className={courseGridClassName}>
           {courses.map((course) => (
             <motion.div
               key={course.id}
@@ -66,9 +74,19 @@ export function CoursesSection({
             >
               <Link
                 to={course.href}
-                className="block overflow-hidden rounded-sm bg-surface-container-lowest shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] transition-shadow hover:shadow-[0_18px_36px_-26px_rgba(53,37,205,0.45)]"
+                className={`block overflow-hidden rounded-sm bg-surface-container-lowest shadow-[0_8px_20px_-18px_rgba(15,23,42,0.35)] transition-all hover:bg-surface-container-low hover:shadow-[0_18px_36px_-26px_rgba(53,37,205,0.45)] focus-visible:outline-none ${
+                  shouldUseCompactWideCards
+                    ? "md:grid md:min-h-44 md:grid-cols-[180px_1fr] xl:grid-cols-[220px_1fr]"
+                    : ""
+                }`}
               >
-                <div className="aspect-4/3 overflow-hidden bg-surface-container-low">
+                <div
+                  className={`overflow-hidden bg-surface-container-low ${
+                    shouldUseCompactWideCards
+                      ? "aspect-4/3 md:aspect-auto md:h-full"
+                      : "aspect-4/3"
+                  }`}
+                >
                   <img
                     src={course.image}
                     alt={course.title}

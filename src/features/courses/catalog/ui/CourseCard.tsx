@@ -28,13 +28,20 @@ export function CourseCard({ course }: CourseCardProps) {
           className="w-full h-full object-cover transition-transform duration-400 group-hover:scale-110"
           src={course.imageUrl}
         />
-        {course.badge && (
-          <div
-            className={`absolute top-3 left-3 px-3 py-1 text-[10px] font-bold rounded-full uppercase ${
-              course.badgeColor ? badgeColorMap[course.badgeColor] : ""
-            }`}
-          >
-            {course.badge}
+        {(course.tags?.length ?? 0) > 0 && (
+          <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+            {course.tags?.map((tag) => (
+              <span
+                key={tag}
+                className={`px-3 py-1 text-[10px] font-bold uppercase ${
+                  tag === "Hot"
+                    ? badgeColorMap.tertiary
+                    : badgeColorMap.secondary
+                }`}
+              >
+                {tag}
+              </span>
+            ))}
           </div>
         )}
       </div>

@@ -2,13 +2,13 @@ import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Link } from "react-router-dom";
 import { useContext, useState } from "react";
+import { LMSContext } from "@/contexts/LMSContext";
+import { requestPasswordReset } from "@/shared/api/auth";
+import { Spinner } from "@/components/ui/Spinner";
 import Input from "../ui/Input";
 import AuthenticationLayout from "../components/AuthenticationLayout";
 import AuthenticationHeader from "../components/AuthenticationHeader";
 import AuthenticationForm from "../components/AuthenticationForm";
-import { LMSContext } from "@/contexts/LMSContext";
-import { requestPasswordReset } from "@/shared/api/auth";
-import { Spinner } from "@/components/ui/Spinner";
 
 const ForgotPassword = () : React.JSX.Element => {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState<string>("");

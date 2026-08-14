@@ -10,7 +10,7 @@ export interface CourseFilters {
   search?: string;
   category?: string;
   difficulty?: CourseDifficulty;
-  minimumRating?: number;
+  publishDateSort?: "default" | "newest" | "oldest";
   page?: number;
   pageSize?: number;
 }
@@ -35,9 +35,17 @@ export function listPublishedCourses(filters: CourseFilters = {}) {
   let query = supabase
     .from("courses")
     .select("*, profiles!courses_instructor_id_fkey(*)", { count: "exact" })
-    .eq("status", "published")
-    .order("published_at", { ascending: false, nullsFirst: false })
-    .range(from, to);
+    .eq("status", "published");
+
+  if (filters.publishDateSort === "newest") {
+    query = query.order("published_at", { ascending: false, nullsFirst: false });
+  } else if (filters.publishDateSort === "oldest") {
+    query = query.order("published_at", { ascending: true, nullsFirst: false });
+  } else {
+    query = query.order("updated_at", { ascending: false });
+  }
+
+  query = query.range(from, to);
 
   if (filters.search) {
     query = query.ilike("title", `%${filters.search}%`);
@@ -51,11 +59,14 @@ export function listPublishedCourses(filters: CourseFilters = {}) {
     query = query.eq("difficulty", filters.difficulty);
   }
 
-  if (filters.minimumRating) {
-    query = query.gte("rating", filters.minimumRating);
-  }
-
   return query;
+}
+
+export function listPublishedCourseEnrollmentCounts() {
+  return supabase
+    .from("courses")
+    .select("id,enrolled_count")
+    .eq("status", "published");
 }
 
 export function getCourse(courseId: string) {
@@ -64,6 +75,14 @@ export function getCourse(courseId: string) {
     .select(
       "*, profiles!courses_instructor_id_fkey(*), course_modules(*, lessons(*)), lesson_resources(*)",
     )
+    .eq("id", courseId)
+    .single();
+}
+
+export function getCourseForBuilder(courseId: string) {
+  return supabase
+    .from("courses")
+    .select("*, course_modules(*, lessons(*)), lesson_resources(*)")
     .eq("id", courseId)
     .single();
 }
@@ -105,9 +124,12 @@ export function deleteCourse(courseId: string) {
 }
 
 export function upsertCourseModules(modules: Inserts<"course_modules">[]) {
+  const rows = modules.map(({ id, ...module }) =>
+    id ? { ...module, id } : module,
+  );
   return supabase
     .from("course_modules")
-    .upsert(modules, { onConflict: "course_id,sort_order" })
+    .upsert(rows, { onConflict: "course_id,sort_order", defaultToNull: false })
     .select("*");
 }
 
@@ -116,36 +138,15 @@ export function deleteCourseModule(moduleId: string) {
 }
 
 export function upsertLessons(courseId: string, lessons: LessonDraftInput[]) {
-  const rows = lessons.map((lesson) => ({ ...lesson, course_id: courseId }));
+  const rows = lessons.map(({ id, ...lesson }) =>
+    id ? { ...lesson, id, course_id: courseId } : { ...lesson, course_id: courseId },
+  );
   return supabase
     .from("lessons")
-    .upsert(rows, { onConflict: "module_id,sort_order" })
+    .upsert(rows, { onConflict: "module_id,sort_order", defaultToNull: false })
     .select("*");
 }
 
 export function deleteLesson(lessonId: string) {
   return supabase.from("lessons").delete().eq("id", lessonId);
-}
-
-export async function duplicateCourse(courseId: string, instructorId: string) {
-  const { data: source, error } = await supabase
-    .from("courses")
-    .select("*")
-    .eq("id", courseId)
-    .single();
-  if (error || !source) return { data: null, error };
-
-  const duplicateTitle = `${source.title} Copy`;
-  return createCourseDraft({
-    instructor_id: instructorId,
-    title: duplicateTitle,
-    slug: `${source.slug}-copy-${Date.now()}`,
-    description: source.description,
-    thumbnail_url: source.thumbnail_url,
-    category: source.category,
-    difficulty: source.difficulty,
-    preview_video_url: source.preview_video_url,
-    duration_minutes: source.duration_minutes,
-    status: "draft",
-  });
 }

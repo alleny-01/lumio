@@ -1,6 +1,9 @@
 import { getProfile } from "@/shared/api/profiles";
 import { listUserEnrollments } from "@/shared/api/enrollments";
-import { listStudyActivity } from "@/shared/api/progress";
+import {
+  listCompletedLessonProgress,
+  listStudyActivity,
+} from "@/shared/api/progress";
 import type { Tables } from "@/shared/types/database";
 import { fallbackQuotes } from "../constants";
 import type {
@@ -14,8 +17,11 @@ interface EnrollmentWithCourse extends Tables<"enrollments"> {
   courses: Tables<"courses"> | null;
 }
 
-function isoDate(date: Date) {
-  return date.toISOString().slice(0, 10);
+function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function startOfDay(date: Date) {
@@ -28,17 +34,25 @@ function getRecentWindow(days: number) {
   const end = startOfDay(new Date());
   const start = new Date(end);
   start.setDate(start.getDate() - (days - 1));
-  return { start: isoDate(start), end: isoDate(end) };
+  return { start: localDateKey(start), end: localDateKey(end) };
+}
+
+function getWeekStartDateKey() {
+  const start = startOfDay(new Date());
+  start.setDate(start.getDate() - 6);
+  return localDateKey(start);
 }
 
 function calculateStreak(activity: DashboardActivity[]) {
   const activeDates = new Set(
-    activity.filter((item) => item.minutes > 0).map((item) => item.date),
+    activity
+      .filter((item) => item.minutes > 0 || item.lessonsCompleted > 0)
+      .map((item) => item.date),
   );
   const cursor = startOfDay(new Date());
   let streak = 0;
 
-  while (activeDates.has(isoDate(cursor))) {
+  while (activeDates.has(localDateKey(cursor))) {
     streak += 1;
     cursor.setDate(cursor.getDate() - 1);
   }
@@ -72,7 +86,7 @@ function mapEnrollmentToCourse(
         : `${Math.round(progress * 100)}% complete`,
     href: enrollment.last_watched_lesson_id
       ? `/viewer?course=${enrollment.course_id}&lesson=${enrollment.last_watched_lesson_id}`
-      : `/courses/${enrollment.course_id}`,
+      : `/viewer?course=${enrollment.course_id}`,
     status,
   };
 }
@@ -87,11 +101,18 @@ async function fetchQuote(): Promise<DashboardQuote> {
 
 export async function loadDashboardData(userId: string): Promise<DashboardData> {
   const { start, end } = getRecentWindow(35);
-  const [profileResult, enrollmentsResult, activityResult, quote] =
+  const [
+    profileResult,
+    enrollmentsResult,
+    activityResult,
+    completedLessonsResult,
+    quote,
+  ] =
     await Promise.all([
       getProfile(userId),
       listUserEnrollments(userId),
       listStudyActivity(userId, start, end),
+      listCompletedLessonProgress(userId),
       fetchQuote(),
     ]);
 
@@ -110,16 +131,16 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     profileResult.data?.first_name ??
     profileResult.data?.email?.split("@")[0] ??
     "Learner";
+  const weekStartDateKey = getWeekStartDateKey();
   const weeklyMinutes = activity
-    .slice(-7)
+    .filter((item) => item.date >= weekStartDateKey)
     .reduce((sum, item) => sum + item.minutes, 0);
   const completedCourseCount = enrollments.filter(
     (item) => item.completed_at || Number(item.progress_percent) >= 100,
   ).length;
-  const totalLessonsCompleted = activity.reduce(
-    (sum, item) => sum + item.lessonsCompleted,
-    0,
-  );
+  const totalLessonsCompleted =
+    completedLessonsResult.data?.length ??
+    activity.reduce((sum, item) => sum + item.lessonsCompleted, 0);
 
   return {
     firstName,

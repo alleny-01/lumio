@@ -1,8 +1,6 @@
 import {
   BookOpenCheck,
   ArrowRight,
-  Sparkles,
-  CheckCircle2,
   Download,
   FileText,
   FileCode,
@@ -72,34 +70,28 @@ export function LessonContent({
 
   return (
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-      {/* Left Main Area — Title, Description, Core Concept & Downloadable Resources */}
       <div className="space-y-6">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
-            <Sparkles className="size-3" />
-            Lesson Details
-          </div>
           <h1 className="mt-3 text-2xl font-medium tracking-tight text-on-surface sm:text-[30px] leading-snug">
             {lesson.title}
           </h1>
-          <p className="mt-3 max-w-3xl text-[13px] font-light leading-relaxed text-on-surface-variant">
+          <p className="mt-3 max-w-3xl text-[13px] font-normal leading-relaxed">
             {lesson.description}
           </p>
         </div>
 
-        {/* Modernized Core Concept & Resources Card */}
-        <div className="rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-[0_12px_32px_-22px_rgba(15,23,42,0.18)] space-y-6">
+        <div className="rounded-sm  bg-surface-container-lowest p-6 shadow-[0_12px_32px_-22px_rgba(15,23,42,0.18)] space-y-6">
           <div className="space-y-3">
             <div className="flex items-center gap-2.5 text-primary">
               <div className="flex size-7 items-center justify-center rounded-sm bg-primary/10 text-primary">
-                <BookOpenCheck className="size-4" />
+                <BookOpenCheck className="size-4" strokeWidth={1}/>
               </div>
               <h2 className="text-[14px] font-medium text-on-surface">
                 Core Lesson Concept
               </h2>
             </div>
 
-            <div className="rounded-sm bg-surface-container-low/60 p-4 border border-outline-variant/20">
+            <div className="rounded-sm bg-surface-container-low/60 p-4">
               <p className="text-[13px] font-light leading-relaxed text-on-surface">
                 {lesson.coreConcept ||
                   "Capture the fundamental principles of this lesson and integrate them directly into your development workflow."}
@@ -107,7 +99,6 @@ export function LessonContent({
             </div>
           </div>
 
-          {/* Lesson Resources & Download Section */}
           <div className="border-t border-outline-variant/20 pt-5 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -126,7 +117,7 @@ export function LessonContent({
                 {resources.map((res) => (
                   <div
                     key={res.id}
-                    className="flex items-center justify-between gap-3 rounded-sm border border-outline-variant/20 bg-surface-container-low p-3 transition-all hover:border-primary/30 hover:bg-surface-container-lowest"
+                    className="flex items-center justify-between gap-3 rounded-sm bg-surface-container-low p-3 transition-all hover:border-primary/30 hover:bg-surface-container-lowest"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-surface p-1.5 shadow-2xs">
@@ -163,9 +154,8 @@ export function LessonContent({
         </div>
       </div>
 
-      {/* Right Column — Modernized Next Lesson Card */}
       <div className="space-y-4">
-        <div className="rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-[0_12px_32px_-22px_rgba(15,23,42,0.18)] space-y-4">
+        <div className="rounded-sm bg-surface-container-lowest p-5 shadow-[0_12px_32px_-22px_rgba(15,23,42,0.18)] space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
               Up Next
@@ -203,15 +193,9 @@ export function LessonContent({
               </div>
             </div>
           ) : (
-            <div className="rounded-sm border border-outline-variant/20 bg-surface-container-low p-4 text-center space-y-2">
-              <CheckCircle2 className="size-6 text-tertiary mx-auto" />
-              <h3 className="text-[13px] font-medium text-on-surface">
-                Course Complete!
-              </h3>
-              <p className="text-[11px] font-light text-on-surface-variant">
-                You have finished all available lessons in this course.
-              </p>
-            </div>
+            <p className="text-[12px] font-light italic text-on-surface-variant">
+              You have reached the end of this course. Check out other courses in your learning dashboard to continue your learning journey.
+            </p>
           )}
         </div>
       </div>

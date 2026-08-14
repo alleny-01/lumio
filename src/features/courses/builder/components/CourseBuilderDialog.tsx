@@ -1,8 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Save, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { showToast } from "@/components/ui/Toast";
 import {
   createCourseDraft,
+  deleteCourseModule,
+  deleteLesson,
   setCourseStatus,
   updateCourse,
   upsertCourseModules,
@@ -74,6 +77,7 @@ const acceptedResourceTypes = [
 ].join(",");
 const maxThumbnailSize = 5 * 1024 * 1024;
 const maxResourceSize = 10 * 1024 * 1024;
+const recoveryDraftVersion = 1;
 
 function CharacterCount({
   value,
@@ -129,6 +133,42 @@ async function ensureInstructorProfile(instructorId: string, email?: string) {
   if (createProfileResult.error) throw createProfileResult.error;
 }
 
+function getRecoveryKey(instructorId: string, courseId?: string) {
+  return `lumio_course_builder_recovery_${instructorId}_${courseId ?? "new"}`;
+}
+
+function stripFilesFromDraft(draft: CourseBuilderDraft): CourseBuilderDraft {
+  return {
+    ...draft,
+    thumbnailFile: null,
+    modules: draft.modules.map((module) => ({
+      ...module,
+      lessons: module.lessons.map((lesson) => ({
+        ...lesson,
+        resources: lesson.resources.map((resource) => ({
+          ...resource,
+          file: null,
+        })),
+      })),
+    })),
+  };
+}
+
+function draftSignature(draft: CourseBuilderDraft) {
+  return JSON.stringify(stripFilesFromDraft(draft));
+}
+
+function formatRecoveryTime(value: number | null) {
+  if (!value) return "Not saved yet";
+  return `Recovered ${new Date(value).toLocaleString()}`;
+}
+
+interface StoredRecoveryDraft {
+  version: number;
+  savedAt: number;
+  draft: CourseBuilderDraft;
+}
+
 export function CourseBuilderDialog({
   instructorId,
   instructorEmail,
@@ -139,11 +179,108 @@ export function CourseBuilderDialog({
   const [draft, setDraft] = useState<CourseBuilderDraft>(
     initialDraft ?? createEmptyDraft(),
   );
+  const initialDraftSignatureRef = useRef(draftSignature(draft));
+  const initialPersistedModuleIds = useMemo(
+    () =>
+      new Set(
+        (initialDraft?.modules ?? [])
+          .map((module) => module.persistedId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    [initialDraft],
+  );
+  const initialPersistedLessonIds = useMemo(
+    () =>
+      new Set(
+        (initialDraft?.modules ?? [])
+          .flatMap((module) => module.lessons)
+          .map((lesson) => lesson.persistedId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    [initialDraft],
+  );
   const [step, setStep] = useState<"info" | "content">("info");
   const [isSaving, setIsSaving] = useState(false);
   const [savingStatus, setSavingStatus] = useState<CourseStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [recoveredDraft, setRecoveredDraft] = useState<StoredRecoveryDraft | null>(
+    null,
+  );
+  const [lastRecoverySaveAt, setLastRecoverySaveAt] = useState<number | null>(
+    null,
+  );
+  const recoveryKey = useMemo(
+    () => getRecoveryKey(instructorId, initialDraft?.id),
+    [instructorId, initialDraft?.id],
+  );
+  const isPublishedCourse = draft.status === "published";
+  const currentDraftSignature = useMemo(() => draftSignature(draft), [draft]);
+  const hasUnsavedChanges =
+    currentDraftSignature !== initialDraftSignatureRef.current;
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(recoveryKey);
+      if (!stored) return;
+
+      const parsed = JSON.parse(stored) as StoredRecoveryDraft;
+      if (
+        parsed.version !== recoveryDraftVersion ||
+        !parsed.draft ||
+        draftSignature(parsed.draft) === initialDraftSignatureRef.current
+      ) {
+        return;
+      }
+
+      setRecoveredDraft(parsed);
+      setLastRecoverySaveAt(parsed.savedAt);
+    } catch (error) {
+      console.warn("Unable to read course builder recovery draft:", error);
+    }
+  }, [recoveryKey]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const handle = window.setTimeout(() => {
+      try {
+        const savedAt = Date.now();
+        const recoveryDraft: StoredRecoveryDraft = {
+          version: recoveryDraftVersion,
+          savedAt,
+          draft: stripFilesFromDraft(draft),
+        };
+        localStorage.setItem(recoveryKey, JSON.stringify(recoveryDraft));
+        setLastRecoverySaveAt(savedAt);
+      } catch (error) {
+        console.warn("Unable to save course builder recovery draft:", error);
+      }
+    }, 600);
+
+    return () => window.clearTimeout(handle);
+  }, [draft, hasUnsavedChanges, recoveryKey]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const clearRecoveryDraft = () => {
+    try {
+      localStorage.removeItem(recoveryKey);
+    } catch (error) {
+      console.warn("Unable to clear course builder recovery draft:", error);
+    }
+    setRecoveredDraft(null);
+    setLastRecoverySaveAt(null);
+  };
 
   const validationMessage = useMemo(() => {
     if (!isValidYoutubeUrl(draft.previewVideoUrl)) {
@@ -161,26 +298,70 @@ export function CourseBuilderDialog({
     return null;
   }, [draft]);
 
-  const getValidationError = (status: CourseStatus) => {
+  const notifyError = (message: string, title = "Action Failed") => {
+    showToast({
+      type: "error",
+      title,
+      description: message,
+    });
+  };
+
+  const getValidationError = (status: CourseStatus, shouldPublish = false) => {
     if (validationMessage) return validationMessage;
 
     if (status === "draft") return null;
 
-    if (draft.title.trim().length < 3) {
-      return "Add a course title before saving.";
+    if (!shouldPublish) return null;
+
+    if (!draft.title.trim()) {
+      return "Course title is required before publishing.";
     }
 
-    if (draft.description.trim().length < 10) {
-      return "Add a useful course description before saving.";
+    if (!draft.category.trim()) {
+      return "Course category is required before publishing.";
     }
 
-    if (status === "published") {
-      const hasLessonVideo = draft.modules.some((module) =>
-        module.lessons.some((lesson) => lesson.youtubeUrl.trim().length > 0),
-      );
+    if (!draft.difficulty) {
+      return "Course difficulty is required before publishing.";
+    }
 
-      if (!hasLessonVideo) {
-        return "Add at least one YouTube lesson video before publishing.";
+    if (!draft.thumbnailUrl && !draft.thumbnailFile) {
+      return "Course thumbnail is required before publishing.";
+    }
+
+    if (!draft.previewVideoUrl.trim()) {
+      return "Preview YouTube URL is required before publishing.";
+    }
+
+    if (!draft.description.trim()) {
+      return "Course description is required before publishing.";
+    }
+
+    const hasOutcome = (draft.learningOutcomes || []).some(
+      (outcome) => outcome.trim().length > 0,
+    );
+    if (!hasOutcome) {
+      return "At least one learning outcome is required before publishing.";
+    }
+
+    if (!draft.modules.length) {
+      return "At least one module is required before publishing.";
+    }
+
+    for (const [moduleIndex, module] of draft.modules.entries()) {
+      if (!module.title.trim()) {
+        return `Module ${moduleIndex + 1} title is required before publishing.`;
+      }
+      if (!module.lessons.length) {
+        return `Module ${moduleIndex + 1} needs at least one lesson before publishing.`;
+      }
+      for (const [lessonIndex, lesson] of module.lessons.entries()) {
+        const label = `Module ${moduleIndex + 1}, lesson ${lessonIndex + 1}`;
+        if (!lesson.title.trim()) return `${label} title is required before publishing.`;
+        if (!lesson.youtubeUrl.trim()) return `${label} YouTube URL is required before publishing.`;
+        if (!lesson.description.trim()) return `${label} description is required before publishing.`;
+        if (!lesson.coreConcept.trim()) return `${label} core concept is required before publishing.`;
+        if (!Number(lesson.durationMinutes)) return `${label} duration is required before publishing.`;
       }
     }
 
@@ -200,17 +381,27 @@ export function CourseBuilderDialog({
     return "Unable to save this course.";
   };
 
-  const saveDraft = async (status: CourseStatus = draft.status) => {
-    const nextError = getValidationError(status);
+  const saveDraft = async (
+    status: CourseStatus = draft.status,
+    shouldPublish = false,
+  ) => {
+    if (draft.status === "published" && status === "draft") {
+      notifyError(
+        "Published courses must be updated directly so enrolled learners keep access.",
+        "Use Update Published Course",
+      );
+      return;
+    }
+
+    const nextError = getValidationError(status, shouldPublish);
     if (nextError) {
-      setError(nextError);
+      notifyError(nextError, "Validation Required");
       return;
     }
 
     if (isSaving) return;
     setIsSaving(true);
     setSavingStatus(status);
-    setError(null);
 
     try {
       await ensureInstructorProfile(instructorId, instructorEmail);
@@ -245,6 +436,7 @@ export function CourseBuilderDialog({
         preview_video_url: draft.previewVideoUrl || null,
         duration_minutes: duration,
         status,
+        published_at: status === "draft" ? null : undefined,
         learning_outcomes: cleanedOutcomes,
       };
 
@@ -262,7 +454,9 @@ export function CourseBuilderDialog({
           `lumio_course_outcomes_${courseId}`,
           JSON.stringify(cleanedOutcomes),
         );
-      } catch {}
+      } catch (storageError) {
+        console.warn("Unable to cache course outcomes locally:", storageError);
+      }
       let thumbnailUrl = draft.thumbnailUrl;
 
       if (draft.thumbnailFile) {
@@ -282,29 +476,32 @@ export function CourseBuilderDialog({
       }
 
       const moduleRows = draft.modules.map((module, index) => ({
-        id: module.persistedId,
+        ...(module.persistedId ? { id: module.persistedId } : {}),
         course_id: courseId,
-        title: module.title,
+        title: module.title.trim() || `Module ${index + 1}`,
         sort_order: index + 1,
       }));
       const modulesResult = await upsertCourseModules(moduleRows);
       if (modulesResult.error) throw modulesResult.error;
 
       const savedModules = modulesResult.data ?? [];
+      const savedModuleBySortOrder = new Map(
+        savedModules.map((module) => [module.sort_order, module]),
+      );
       const lessonRefs: Array<{
         moduleIndex: number;
         lessonIndex: number;
         lesson: CourseBuilderDraft["modules"][number]["lessons"][number];
       }> = [];
       const lessons = draft.modules.flatMap((module, moduleIndex) => {
-        const savedModule = savedModules[moduleIndex];
+        const savedModule = savedModuleBySortOrder.get(moduleIndex + 1);
         if (!savedModule) return [];
         return module.lessons.map((lesson, lessonIndex) => {
           lessonRefs.push({ moduleIndex, lessonIndex, lesson });
           return {
-            id: lesson.persistedId,
+            ...(lesson.persistedId ? { id: lesson.persistedId } : {}),
             module_id: savedModule.id,
-            title: lesson.title,
+            title: lesson.title.trim() || `Lesson ${lessonIndex + 1}`,
             description: lesson.description || null,
             youtube_url: lesson.youtubeUrl || draft.previewVideoUrl,
             duration_minutes: Number(lesson.durationMinutes || 0),
@@ -314,13 +511,25 @@ export function CourseBuilderDialog({
         });
       });
 
+      let savedLessons: Array<{ id: string; module_id: string; sort_order: number }> = [];
       if (lessons.length) {
         const lessonsResult = await upsertLessons(courseId, lessons);
         if (lessonsResult.error) throw lessonsResult.error;
-        const savedLessons = lessonsResult.data ?? [];
+        savedLessons = lessonsResult.data ?? [];
+        const savedLessonByModuleAndSortOrder = new Map(
+          savedLessons.map((lesson) => [
+            `${lesson.module_id}:${lesson.sort_order}`,
+            lesson,
+          ]),
+        );
 
-        for (const [index, lessonRef] of lessonRefs.entries()) {
-          const savedLesson = savedLessons[index];
+        for (const lessonRef of lessonRefs) {
+          const savedModule = savedModuleBySortOrder.get(lessonRef.moduleIndex + 1);
+          const savedLesson = savedModule
+            ? savedLessonByModuleAndSortOrder.get(
+                `${savedModule.id}:${lessonRef.lessonIndex + 1}`,
+              )
+            : null;
           if (!savedLesson) continue;
 
           for (const resource of lessonRef.lesson.resources) {
@@ -353,10 +562,25 @@ export function CourseBuilderDialog({
         }
       }
 
-      if (status !== "draft") {
+      if (shouldPublish) {
         const statusResult = await setCourseStatus(courseId, status);
         if (statusResult.error) throw statusResult.error;
       }
+
+      const savedModuleIds = new Set(savedModules.map((module) => module.id));
+      const savedLessonIds = new Set(
+        (lessons.length ? savedLessons : []).map((lesson) => lesson.id),
+      );
+      await Promise.all(
+        [...initialPersistedLessonIds]
+          .filter((lessonId) => !savedLessonIds.has(lessonId))
+          .map((lessonId) => deleteLesson(lessonId)),
+      );
+      await Promise.all(
+        [...initialPersistedModuleIds]
+          .filter((moduleId) => !savedModuleIds.has(moduleId))
+          .map((moduleId) => deleteCourseModule(moduleId)),
+      );
 
       setDraft((current) => ({
         ...current,
@@ -366,9 +590,25 @@ export function CourseBuilderDialog({
         thumbnailFile: null,
         status,
       }));
+      clearRecoveryDraft();
+      showToast({
+        type: "success",
+        title:
+          status === "published"
+            ? draft.id
+              ? "Course Updated"
+              : "Course Published"
+            : status === "draft"
+              ? "Draft Saved"
+              : "Course Saved",
+        description:
+          status === "published"
+            ? "Your published course has been updated."
+            : "Your course changes have been saved.",
+      });
       onSaved();
     } catch (saveError) {
-      setError(formatSaveError(saveError));
+      notifyError(formatSaveError(saveError));
     } finally {
       setIsSaving(false);
       setSavingStatus(null);
@@ -407,11 +647,10 @@ export function CourseBuilderDialog({
   const handleThumbnailChange = (file: File | undefined) => {
     if (!file) return;
     if (!file.type.startsWith("image/") || file.size > maxThumbnailSize) {
-      setError("Thumbnail must be a PNG, JPG, or WebP image under 5MB.");
+      notifyError("Thumbnail must be a PNG, JPG, or WebP image under 5MB.");
       return;
     }
 
-    setError(null);
     setDraft((current) => ({
       ...current,
       thumbnailFile: file,
@@ -435,13 +674,12 @@ export function CourseBuilderDialog({
   ) => {
     if (!file) return;
     if (!isAllowedResourceFile(file)) {
-      setError(
+      notifyError(
         "Resources must be PDFs, docs, Markdown/text files, or PNG/JPG/WebP images. Videos are not supported.",
       );
       return;
     }
 
-    setError(null);
     updateLesson(moduleId, lessonId, {
       resources: draft.modules
         .find((module) => module.id === moduleId)
@@ -503,6 +741,11 @@ export function CourseBuilderDialog({
             <h2 id="course-builder-title" className="mt-1 text-sm font-medium">
               {draft.id ? "Edit course" : "Create course"}
             </h2>
+            {hasUnsavedChanges ? (
+              <p className="mt-1 text-[10px] font-light text-on-surface-variant">
+                {formatRecoveryTime(lastRecoverySaveAt)}
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -540,7 +783,6 @@ export function CourseBuilderDialog({
                   className={fieldClass()}
                   value={draft.title}
                   maxLength={characterLimits.courseTitle}
-                  onBlur={() => draft.id && saveDraft("draft")}
                   onChange={(event) =>
                     setDraft((current) => ({
                       ...current,
@@ -654,8 +896,7 @@ export function CourseBuilderDialog({
                   max={characterLimits.courseDescription}
                 />
               </label>
-
-              {/* What you'll learn Section (Max 6 inputs) */}
+              
               <div className="space-y-3 text-xs md:col-span-2 rounded-sm border border-border/40 bg-surface-container-low p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -743,7 +984,6 @@ export function CourseBuilderDialog({
                         className={`${fieldClass()} mt-1.5`}
                         value={module.title}
                         maxLength={characterLimits.moduleTitle}
-                        onBlur={() => draft.id && saveDraft("draft")}
                         onChange={(event) =>
                           updateModule(module.id, event.target.value)
                         }
@@ -1113,40 +1353,31 @@ export function CourseBuilderDialog({
             </div>
           )}
 
-          {error ? (
-            <p className="mt-4 rounded-sm bg-error/10 px-3 py-2 text-xs text-error">
-              {error}
-            </p>
-          ) : validationMessage ? (
-            <p className="mt-4 text-xs text-on-surface-variant">
-              {validationMessage}
-            </p>
-          ) : null}
         </div>
 
         <footer className="flex flex-col gap-2 border-t border-outline-variant/30 px-5 py-4 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isSaving}
-            onClick={() => saveDraft("draft")}
-          >
-            <Save /> Save as Draft
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isSaving}
-            onClick={() => saveDraft("saved")}
-          >
-            {savingStatus === "saved" ? "Saving..." : "Save"}
-          </Button>
+          {!isPublishedCourse ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSaving}
+              onClick={() => saveDraft("draft")}
+            >
+              <Save /> Save as Draft
+            </Button>
+          ) : null}
           <Button
             type="button"
             disabled={isSaving}
-            onClick={() => saveDraft("published")}
+            onClick={() => saveDraft("published", true)}
           >
-            {savingStatus === "published" ? "Publishing..." : "Save & Publish"}
+            {savingStatus === "published"
+              ? isPublishedCourse
+                ? "Updating..."
+                : "Publishing..."
+              : isPublishedCourse
+                ? "Update Published Course"
+                : "Save & Publish"}
           </Button>
         </footer>
       </section>
@@ -1166,8 +1397,55 @@ export function CourseBuilderDialog({
               >
                 Keep editing
               </Button>
-              <Button type="button" variant="destructive" onClick={onClose}>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  clearRecoveryDraft();
+                  onClose();
+                }}
+              >
                 Discard
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {recoveredDraft && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/45 px-4">
+          <div className="w-full max-w-sm rounded-sm border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-2xl">
+            <h3 className="text-sm font-medium text-on-surface">
+              Restore unsaved course?
+            </h3>
+            <p className="mt-2 text-xs font-light leading-6 text-on-surface-variant">
+              Lumio found an autosaved builder recovery from{" "}
+              {new Date(recoveredDraft.savedAt).toLocaleString()}.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  clearRecoveryDraft();
+                }}
+              >
+                Ignore
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setDraft(recoveredDraft.draft);
+                  setRecoveredDraft(null);
+                  setLastRecoverySaveAt(recoveredDraft.savedAt);
+                  showToast({
+                    type: "success",
+                    title: "Draft Restored",
+                    description: "Your unsaved course builder progress is back.",
+                  });
+                }}
+              >
+                Restore
               </Button>
             </div>
           </div>

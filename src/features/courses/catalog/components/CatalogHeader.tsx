@@ -5,7 +5,7 @@ export function CatalogHeader() {
         <div>
           <h1 className="text-xl md:text-2xl font-extralight tracking-tight leading-tight max-w-2xl">
             Master your craft with the world's{" "}
-            <span className="text-primary-container">finest ateliers.</span>
+            <span>finest ateliers.</span>
           </h1>
         </div>
       </div>

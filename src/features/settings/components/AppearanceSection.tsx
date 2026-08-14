@@ -42,7 +42,7 @@ export function AppearanceSection({
     <section className="min-w-0 rounded-sm border border-border/30 bg-surface-container-lowest px-4 py-5 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.25)] sm:px-6 sm:py-6">
       <div className="flex items-center gap-2 border-b border-border/30 pb-4">
         <Palette className="size-4 text-primary" />
-        <h2 className="text-[15px] font-light text-on-background">
+        <h2 className="text-[15px] font-normal text-on-background">
           Appearance
         </h2>
       </div>

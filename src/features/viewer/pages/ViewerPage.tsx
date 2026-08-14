@@ -1,23 +1,95 @@
-import { useContext, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { LMSContext } from "@/contexts/LMSContext";
-import { buildFallbackViewerData } from "@/features/courses/api/courseData";
-import { markLessonComplete } from "@/shared/api/progress";
+import {
+  buildFallbackViewerData,
+  loadViewerData,
+} from "@/features/courses/api/courseData";
+import { updateEnrollmentProgress } from "@/shared/api/enrollments";
+import {
+  listLessonProgress,
+  markLessonComplete,
+  recordLessonCompletionActivity,
+} from "@/shared/api/progress";
 import { ViewerShell } from "../components";
+import type { ViewerData } from "../types";
 
 export default function ViewerPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { session, setAuthError } = useContext(LMSContext);
+  const [viewerData, setViewerData] = useState<ViewerData | null>(null);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(
     () => new Set(),
   );
+  const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
-  const activeLessonId = searchParams.get("lesson") ?? "tonal-depth";
+  const activeLessonId = searchParams.get("lesson");
   const courseId = searchParams.get("course") ?? "demo-course";
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProgress() {
+      if (!session?.user.id || courseId === "demo-course") return;
+      const { data, error } = await listLessonProgress(session.user.id, courseId);
+      if (error) {
+        setAuthError(error.message);
+        return;
+      }
+      if (!isMounted) return;
+      setCompletedLessons(
+        new Set(
+          (data ?? [])
+            .filter((item) => item.is_completed)
+            .map((item) => item.lesson_id),
+        ),
+      );
+    }
+
+    void loadProgress();
+    return () => {
+      isMounted = false;
+    };
+  }, [courseId, session?.user.id, setAuthError]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        const data =
+          courseId === "demo-course"
+            ? buildFallbackViewerData(activeLessonId ?? undefined)
+            : await loadViewerData(courseId, activeLessonId, completedLessons);
+        if (!isMounted) return;
+        setViewerData(data);
+        if (!activeLessonId) {
+          setSearchParams((params) => {
+            params.set("course", courseId);
+            params.set("lesson", data.activeLesson.id);
+            return params;
+          });
+        }
+      } catch (error) {
+        setAuthError(
+          error instanceof Error ? error.message : "Unable to load course viewer.",
+        );
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+
+    void loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeLessonId, completedLessons, courseId, setAuthError, setSearchParams]);
+
   const data = useMemo(() => {
-    const viewerData = buildFallbackViewerData(activeLessonId);
-    const allLessons = viewerData.chapters.flatMap((c) => c.lessons);
+    const currentViewerData =
+      viewerData ?? buildFallbackViewerData(activeLessonId ?? undefined);
+    const allLessons = currentViewerData.chapters.flatMap((c) => c.lessons);
     const totalLessons = allLessons.length;
     const completedCount = allLessons.filter(
       (l) => l.completed || completedLessons.has(l.id),
@@ -26,18 +98,18 @@ export default function ViewerPage() {
       totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
     return {
-      ...viewerData,
+      ...currentViewerData,
       completedLessons: completedCount,
       totalLessons,
       progressPercent,
       activeLesson: {
-        ...viewerData.activeLesson,
+        ...currentViewerData.activeLesson,
         completed:
-          viewerData.activeLesson.completed ||
-          completedLessons.has(viewerData.activeLesson.id),
+          currentViewerData.activeLesson.completed ||
+          completedLessons.has(currentViewerData.activeLesson.id),
       },
     };
-  }, [activeLessonId, completedLessons]);
+  }, [activeLessonId, completedLessons, viewerData]);
 
   const selectLesson = (lessonId: string) => {
     setSearchParams((params) => {
@@ -45,9 +117,16 @@ export default function ViewerPage() {
       params.set("lesson", lessonId);
       return params;
     });
+
+    if (session?.user.id && courseId !== "demo-course") {
+      void updateEnrollmentProgress(session.user.id, courseId, {
+        last_watched_lesson_id: lessonId,
+      });
+    }
   };
 
   const handleMarkComplete = async () => {
+    const wasAlreadyCompleted = completedLessons.has(data.activeLesson.id);
     setIsCompleting(true);
     try {
       if (session?.user.id && courseId !== "demo-course") {
@@ -60,10 +139,32 @@ export default function ViewerPage() {
           setAuthError(error.message);
           return;
         }
+        if (!wasAlreadyCompleted) {
+          const activityResult = await recordLessonCompletionActivity(
+            session.user.id,
+            data.activeLesson.durationMinutes,
+          );
+          if (activityResult.error) {
+            setAuthError(activityResult.error.message);
+            return;
+          }
+        }
       }
       setCompletedLessons((current) =>
         new Set(current).add(data.activeLesson.id),
       );
+      if (session?.user.id && courseId !== "demo-course") {
+        const nextCompleted = new Set(completedLessons).add(data.activeLesson.id);
+        const progressPercent =
+          data.totalLessons > 0
+            ? Math.round((nextCompleted.size / data.totalLessons) * 100)
+            : 0;
+        await updateEnrollmentProgress(session.user.id, courseId, {
+          progress_percent: progressPercent,
+          last_watched_lesson_id: data.activeLesson.id,
+          completed_at: progressPercent >= 100 ? new Date().toISOString() : null,
+        });
+      }
 
       // Auto-advance to next lesson after marking complete
       if (data.nextLesson) {
@@ -73,6 +174,14 @@ export default function ViewerPage() {
       setIsCompleting(false);
     }
   };
+
+  if (isLoading && !viewerData) {
+    return (
+      <div className="min-h-screen bg-surface px-6 py-8 text-sm text-on-surface-variant">
+        Loading course viewer...
+      </div>
+    );
+  }
 
   return (
     <ViewerShell

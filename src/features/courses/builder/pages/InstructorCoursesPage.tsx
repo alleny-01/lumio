@@ -1,12 +1,13 @@
 import { useCallback, useContext, useEffect, useState } from "react";
-import { Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { showToast } from "@/components/ui/Toast";
 import { motion } from "framer-motion";
 import { LMSContext } from "@/contexts/LMSContext";
 import {
   deleteCourse,
-  duplicateCourse,
+  getCourseForBuilder,
   listInstructorCourses,
 } from "@/shared/api/courses";
 import type { Tables } from "@/shared/types/database";
@@ -28,6 +29,8 @@ function InstructorCoursesPage(): React.JSX.Element {
     null,
   );
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<InstructorCourse | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadCourses = useCallback(async () => {
     if (!session?.user.id) return;
@@ -52,29 +55,49 @@ function InstructorCoursesPage(): React.JSX.Element {
     loadCourses();
   }, [loadCourses]);
 
-  const openBuilder = (course?: InstructorCourse) => {
-    setBuilderDraft(course ? draftFromCourse(course) : null);
+  const openBuilder = async (course?: InstructorCourse) => {
+    if (course) {
+      const { data, error } = await getCourseForBuilder(course.id);
+      if (error || !data) {
+        setAuthError(error?.message ?? "Unable to load this course for editing.");
+        showToast({
+          type: "error",
+          title: "Edit Failed",
+          description: error?.message ?? "Unable to load this course for editing.",
+        });
+        return;
+      }
+      setBuilderDraft(draftFromCourse(data));
+    } else {
+      setBuilderDraft(null);
+    }
     setIsBuilderOpen(true);
   };
 
-  const handleDelete = async (courseId: string) => {
-    if (!window.confirm("Delete this course? This cannot be undone.")) return;
-    const { error } = await deleteCourse(courseId);
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    const { error } = await deleteCourse(deleteTarget.id);
     if (error) {
       setAuthError(error.message);
+      showToast({
+        type: "error",
+        title: "Delete Failed",
+        description: error.message,
+      });
+      setIsDeleting(false);
       return;
     }
-    setCourses((current) => current.filter((course) => course.id !== courseId));
-  };
-
-  const handleDuplicate = async (courseId: string) => {
-    if (!session?.user.id) return;
-    const { error } = await duplicateCourse(courseId, session.user.id);
-    if (error) {
-      setAuthError(error.message);
-      return;
-    }
-    await loadCourses();
+    setCourses((current) =>
+      current.filter((course) => course.id !== deleteTarget.id),
+    );
+    showToast({
+      type: "success",
+      title: "Course Deleted",
+      description: `"${deleteTarget.title}" was removed.`,
+    });
+    setDeleteTarget(null);
+    setIsDeleting(false);
   };
 
   return (
@@ -88,7 +111,7 @@ function InstructorCoursesPage(): React.JSX.Element {
             Your courses
           </h1>
           <p className="mt-2 max-w-2xl text-[12px] font-light leading-6 text-on-surface-variant">
-            Create, edit, duplicate, and publish your Lumio courses.
+            Create, edit, and publish your Lumio courses.
           </p>
         </div>
         <Button type="button" size="lg" onClick={() => openBuilder()}>
@@ -102,7 +125,7 @@ function InstructorCoursesPage(): React.JSX.Element {
             {Array.from({ length: 3 }).map((_, index) => (
               <article
                 key={index}
-                className="rounded-sm border border-border/40 bg-surface-container-lowest p-4"
+                className="rounded-sm border border-border/40 bg-surface-container-lowest"
               >
                 <Skeleton className="aspect-[4/3] w-full" />
                 <Skeleton className="mt-4 h-4 w-3/4" />
@@ -178,17 +201,9 @@ function InstructorCoursesPage(): React.JSX.Element {
                     </Button>
                     <Button
                       type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDuplicate(course.id)}
-                    >
-                      <Copy /> Duplicate
-                    </Button>
-                    <Button
-                      type="button"
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleDelete(course.id)}
+                      onClick={() => setDeleteTarget(course)}
                     >
                       <Trash2 /> Delete
                     </Button>
@@ -211,6 +226,38 @@ function InstructorCoursesPage(): React.JSX.Element {
             loadCourses();
           }}
         />
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-sm border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-2xl">
+            <h2 className="text-sm font-medium text-on-surface">
+              Delete course?
+            </h2>
+            <p className="mt-2 text-xs font-light leading-6 text-on-surface-variant">
+              This will permanently delete "{deleteTarget.title}" and its course
+              content.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isDeleting}
+                onClick={() => setDeleteTarget(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={isDeleting}
+                onClick={handleDelete}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

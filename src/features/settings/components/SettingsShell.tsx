@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase/client";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { LMSContext } from "@/contexts/LMSContext";
 import { showToast } from "@/components/ui/Toast";
@@ -77,13 +78,14 @@ function formFromProfile(
   };
 }
 
-function applyThemePreference(_theme: ThemePreference) {
+function applyThemePreference(theme?: ThemePreference) {
+  void theme;
   // Lock app to light theme
   document.documentElement.classList.remove("dark");
 }
 
 export function SettingsShell() {
-  const { session, setAuthError } = useContext(LMSContext);
+  const { session, refreshProfile, setAuthError } = useContext(LMSContext);
   const [activeSection, setActiveSection] =
     useState<SettingsSectionId>("profile");
   const [profile, setProfile] = useState<ProfileSettingsForm | null>(null);
@@ -113,7 +115,7 @@ export function SettingsShell() {
       }
       setProfile(nextProfile);
       setSavedProfile(nextProfile);
-      applyThemePreference(nextProfile.themePreference);
+      applyThemePreference();
       setIsLoading(false);
     }
 
@@ -157,11 +159,23 @@ export function SettingsShell() {
       return;
     }
 
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          first_name: profile.firstName.trim() || null,
+          last_name: profile.lastName.trim() || null,
+        },
+      });
+    } catch {
+      // ignore
+    }
+
     const nextProfile = data
       ? formFromProfile(data, profile)
       : { ...profile };
     setProfile(nextProfile);
     setSavedProfile(nextProfile);
+    await refreshProfile();
     setIsSaving(false);
     showToast({
       type: "success",
@@ -200,6 +214,7 @@ export function SettingsShell() {
       : { ...profile, avatarUrl };
     setProfile(nextProfile);
     setSavedProfile(nextProfile);
+    await refreshProfile();
     setIsUploading(false);
   }
 
@@ -220,6 +235,7 @@ export function SettingsShell() {
       : { ...profile, avatarUrl: "" };
     setProfile(nextProfile);
     setSavedProfile(nextProfile);
+    await refreshProfile();
     setIsUploading(false);
   }
 

@@ -4,7 +4,7 @@ import FilterBar from "../components/FilterBar";
 import { CourseGrid } from "../components/CourseGrid";
 import { CatalogHeader } from "../components/CatalogHeader";
 import { loadCatalogCourses } from "../../api/courseData";
-import type { Course } from "../types/types";
+import type { Course, SortOption } from "../types/types";
 
 const PAGE_SIZE = 8;
 
@@ -13,7 +13,7 @@ export default function CourseCatalogPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("All Categories");
   const [difficulty, setDifficulty] = useState("all");
-  const [minimumRating, setMinimumRating] = useState(0);
+  const [publishDateSort, setPublishDateSort] = useState<SortOption>("default");
   const [page, setPage] = useState(1);
   const [courses, setCourses] = useState<Course[]>([]);
   const [total, setTotal] = useState(0);
@@ -38,7 +38,7 @@ export default function CourseCatalogPage() {
           search: debouncedSearch,
           category,
           difficulty,
-          minimumRating,
+          publishDateSort,
           page,
           pageSize: PAGE_SIZE,
         });
@@ -55,7 +55,7 @@ export default function CourseCatalogPage() {
     return () => {
       isMounted = false;
     };
-  }, [category, debouncedSearch, difficulty, minimumRating, page]);
+  }, [category, debouncedSearch, difficulty, publishDateSort, page]);
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(total / PAGE_SIZE)),
@@ -70,7 +70,7 @@ export default function CourseCatalogPage() {
         <FilterBar
           category={category}
           difficulty={difficulty}
-          minimumRating={minimumRating}
+          publishDateSort={publishDateSort}
           onCategoryChange={(value) => {
             setCategory(value);
             setPage(1);
@@ -79,8 +79,8 @@ export default function CourseCatalogPage() {
             setDifficulty(value);
             setPage(1);
           }}
-          onMinimumRatingChange={(value) => {
-            setMinimumRating(value);
+          onPublishDateSortChange={(value) => {
+            setPublishDateSort(value as SortOption);
             setPage(1);
           }}
         />

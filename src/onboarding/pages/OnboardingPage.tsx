@@ -7,11 +7,12 @@ import {
   CheckCircle2,
   ChevronRight,
   LayoutDashboard,
+  Sparkles,
   Menu,
   MonitorPlay,
   PanelLeft,
   PlayCircle,
-  ShieldCheck,
+  UserRound,
   UploadCloud,
   X,
 } from "lucide-react";
@@ -43,10 +44,10 @@ const featureHighlights = [
     icon: MonitorPlay,
   },
   {
-    title: "Self-hosted Data",
+    title: "Profile for Learners & Instructors",
     description:
-      "Supabase auth, database, storage, and RLS keep portfolio architecture practical and inspectable.",
-    icon: ShieldCheck,
+      "Keep your profile the same either as a learner or as an instructor.",
+    icon: UserRound,
   },
 ];
 
@@ -192,9 +193,55 @@ function OnboardingPage() {
             >
               <motion.div
                 variants={fadeUp}
-                className="mb-6 inline-flex items-center gap-2 rounded-lg border border-on-background/10  px-3 py-1.5 text-[12px] font-light text-on-surface-variant"
+                animate={{
+                  y: [0, -4, 0],
+                }}
+                transition={{
+                  y: { duration: 3.6, repeat: Infinity, ease: "easeInOut" },
+                }}
+                whileHover={{ scale: 1.035, y: -6 }}
+                className="relative mb-6 inline-flex overflow-hidden rounded-lg bg-[linear-gradient(110deg,rgba(15,23,42,0.16),rgba(255,255,255,0.92),rgba(15,23,42,0.12))] p-px shadow-[0_16px_38px_-30px_rgba(15,23,42,0.55)] will-change-transform"
               >
-                Free, self-hosted LMS for modern course platforms
+                <motion.span
+                  aria-hidden="true"
+                  className="absolute inset-0 bg-white/55"
+                  animate={{ opacity: [0.18, 0.4, 0.18] }}
+                  transition={{
+                    duration: 3.4,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
+                <span className="relative inline-flex items-center gap-2 overflow-hidden rounded-[7px] bg-white px-3 py-1.5 text-[11px] font-normal tracking-wider">
+                  <motion.span
+                    aria-hidden="true"
+                    className="absolute inset-y-0 -left-14 w-12 rotate-12 bg-on-background/10"
+                    animate={{ x: [0, 240] }}
+                    transition={{
+                      duration: 3.2,
+                      repeat: Infinity,
+                      repeatDelay: 1.5,
+                      ease: "easeInOut",
+                    }}
+                  />
+                  <motion.span
+                    animate={{
+                      rotate: [0, 18, -12, 0],
+                      scale: [1, 1.15, 0.95, 1],
+                    }}
+                    transition={{
+                      duration: 2.4,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="relative z-10 inline-flex text-on-background"
+                  >
+                    <Sparkles size={18} strokeWidth={1} />
+                  </motion.span>
+                  <span className="relative z-10">
+                    Free, self-hosted LMS for modern course platforms
+                  </span>
+                </span>
               </motion.div>
 
               <motion.h1
@@ -207,7 +254,7 @@ function OnboardingPage() {
 
               <motion.p
                 variants={fadeUp}
-                className="mt-6 max-w-xl text-[15px] font-light leading-7 text-on-surface-variant sm:text-[16px]"
+                className="mt-6 max-w-xl text-[14px] font-light leading-7 sm:text-[15px]"
               >
                 Lumio is a simplified LMS platform where instructors publish
                 structured courses and students move through lessons,
@@ -604,29 +651,34 @@ function OnboardingPage() {
         </section>
 
         <section className="py-16 px-4 sm:px-8">
-          <div className="max-w-7xl mx-auto">
-            <p className="text-[11px] font-medium tracking-widest uppercase mb-3">
+          <motion.div
+            initial={{ opacity: 0, y: 22 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            className="mx-auto max-w-7xl"
+          >
+            <p className="mb-3 text-[11px] font-medium uppercase tracking-widest">
               Future improvements
             </p>
-            <h2 className="text-xl sm:text-2xl font-normal text-foreground mb-2 leading-snug">
+            <h2 className="mb-2 text-xl font-normal leading-snug text-foreground sm:text-2xl">
               Lumio Assistant - Built-in intelligence, where you need it
             </h2>
-            <p className="text-sm text-muted-foreground mb-10 max-w-md leading-relaxed">
+            <p className="mb-10 max-w-md text-sm leading-relaxed text-muted-foreground">
               Two purpose-built AI tools that adapt to your learning — available
               throughout every course.
             </p>
 
-            <div className="grid sm:grid-cols-2 border border-border rounded-xl overflow-hidden divide-x divide-border">
-              <div className="p-8 bg-background hover:bg-muted/40 transition-colors duration-200 group">
-                <div className="w-9 h-9 rounded-lg border border-border flex items-center justify-center mb-5 bg-muted group-hover:border-border/80">
+            <div className="grid overflow-hidden rounded-xl border border-border divide-x divide-border sm:grid-cols-2">
+              <div className="group bg-background p-8 transition-colors duration-200 hover:bg-muted/40">
+                <div className="mb-5 flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-muted group-hover:border-border/80">
                   <span className="material-symbols-outlined text-[16px] text-muted-foreground">
                     chat
                   </span>
                 </div>
-                <p className="text-sm font-medium text-foreground mb-1.5">
+                <p className="mb-1.5 text-sm font-medium text-foreground">
                   AI Chatbot
                 </p>
-                <p className="text-[13px] text-muted-foreground leading-relaxed mb-5">
+                <p className="mb-5 text-[13px] leading-relaxed text-muted-foreground">
                   Ask anything, get instant clarity. The course chatbot
                   understands your material and responds with context-aware
                   answers that keep you moving forward.
@@ -636,7 +688,7 @@ function OnboardingPage() {
                     (tag) => (
                       <span
                         key={tag}
-                        className="text-[11px] text-muted-foreground border border-border rounded-full px-2.5 py-0.5"
+                        className="rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground"
                       >
                         {tag}
                       </span>
@@ -645,16 +697,16 @@ function OnboardingPage() {
                 </div>
               </div>
 
-              <div className="p-8 bg-background hover:bg-muted/40 transition-colors duration-200 group">
-                <div className="w-9 h-9 rounded-lg border border-border flex items-center justify-center mb-5 bg-muted group-hover:border-border/80">
+              <div className="group bg-background p-8 transition-colors duration-200 hover:bg-muted/40">
+                <div className="mb-5 flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-muted group-hover:border-border/80">
                   <span className="material-symbols-outlined text-[16px] text-muted-foreground">
                     quiz
                   </span>
                 </div>
-                <p className="text-sm font-medium text-foreground mb-1.5">
+                <p className="mb-1.5 text-sm font-medium text-foreground">
                   AI Quiz Generator
                 </p>
-                <p className="text-[13px] text-muted-foreground leading-relaxed mb-5">
+                <p className="mb-5 text-[13px] leading-relaxed text-muted-foreground">
                   Reinforce what you've learned with automatically generated
                   quizzes. Questions adapt to each lesson's content, testing
                   comprehension at the right depth.
@@ -667,7 +719,7 @@ function OnboardingPage() {
                   ].map((tag) => (
                     <span
                       key={tag}
-                      className="text-[11px] text-muted-foreground border border-border rounded-full px-2.5 py-0.5"
+                      className="rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground"
                     >
                       {tag}
                     </span>
@@ -675,7 +727,7 @@ function OnboardingPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </section>
 
         <section className="px-4 py-20 sm:px-6 lg:px-8">
@@ -683,7 +735,7 @@ function OnboardingPage() {
             initial={{ opacity: 0, scale: 0.96 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, margin: "-100px" }}
-            className="mx-auto grid max-w-7xl gap-8 overflow-hidden rounded-lg bg-on-background p-6 text-white shadow-[0_28px_90px_-55px_rgba(15,23,42,0.8)] sm:p-8 lg:grid-cols-[1fr_0.9fr] lg:items-center"
+            className="mx-auto grid max-w-7xl gap-8 overflow-hidden rounded-lg bg-primary-container text-white p-6 shadow-[0_28px_90px_-55px_rgba(15,23,42,0.8)] sm:p-8 lg:grid-cols-[1fr_0.9fr] lg:items-center"
           >
             <div>
               <p className="text-[12px] font-normal uppercase">
@@ -728,7 +780,7 @@ function OnboardingPage() {
             className="mx-auto flex max-w-7xl flex-col gap-6 rounded-lg border border-on-background/10 bg-white p-6 shadow-sm sm:p-8 lg:flex-row lg:items-center lg:justify-between"
           >
             <div>
-              <h2 className="text-[28px] font-semibold leading-tight text-on-background sm:text-[36px]">
+              <h2 className="text-[28px] font-normal leading-tight text-on-background sm:text-[36px]">
                 Start learning or publish your first course.
               </h2>
               <p className="mt-2 max-w-2xl text-[13px] font-light leading-6 text-on-surface-variant">
@@ -749,7 +801,7 @@ function OnboardingPage() {
 
       <footer className="border-t border-on-background/10 bg-white px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 text-[12px] text-on-surface-variant sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-medium text-on-background">Lumio</p>
+          <p className="font-medium text-on-background">&copy; 2026 Lumio. All rights reserved.</p>
           <p>Free, self-hosted learning management for modern course demos.</p>
           <div className="flex gap-4">
             <a href="#features" className="hover:text-primary">

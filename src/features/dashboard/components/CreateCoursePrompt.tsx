@@ -9,7 +9,7 @@ export function CreateCoursePrompt() {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="relative overflow-hidden rounded-sm border border-border/40 bg-surface-container-lowest p-5 shadow-[0_12px_32px_-24px_rgba(15,23,42,0.35)]"
+      className="relative overflow-hidden rounded-sm bg-surface-container-lowest p-5 shadow-[0_12px_32px_-24px_rgba(15,23,42,0.35)]"
     >
       <div className="absolute right-5 top-5 hidden text-primary/10 sm:block">
         <BookPlus className="size-24" strokeWidth={1} />
@@ -30,7 +30,7 @@ export function CreateCoursePrompt() {
 
         <Link
           to="/instructor/courses"
-          className="mt-5 inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-[12px] font-medium text-on-primary transition-all hover:-translate-y-0.5 hover:bg-primary-container"
+          className="mt-5 inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-[12px] font-medium text-on-primary transition-all hover:-translate-y-0.5 hover:bg-primary-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
         >
           Open Instructor Studio
           <ArrowRight className="size-3.5" />

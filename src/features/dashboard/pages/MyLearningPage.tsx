@@ -47,7 +47,7 @@ function MyLearningPage(): React.JSX.Element {
 
   return (
     <div className="min-h-screen px-4 py-4 sm:px-6 lg:px-6">
-      <header className="mb-5 rounded-sm border border-border/40 bg-surface-container-lowest p-5">
+      <header className="mb-5 rounded-sm bg-surface-container-lowest p-5">
         <p className="text-[10px] font-light uppercase tracking-[0.24em]">
           My Learning
         </p>

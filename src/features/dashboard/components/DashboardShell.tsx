@@ -21,21 +21,21 @@ function buildStats(data: DashboardData): DashboardStat[] {
       label: "Weekly Study Time",
       value: `${data.weeklyStudyHours} hours`,
       chartType: "line",
-      accent: "#f4d94f",
+      accent: "text-tertiary",
     },
     {
       id: "avg-grade",
       label: "Avg Grade",
       value: `${data.averageGrade}/5`,
       chartType: "line",
-      accent: "#93c5fd",
+      accent: "text-orange-500",
     },
     {
       id: "modules",
       label: "Lessons Completed",
       value: String(data.totalLessonsCompleted),
       chartType: "ring",
-      accent: "#67e8f9",
+      accent: "text-primary-container",
       progress: Math.min(data.totalLessonsCompleted / 25, 1),
     },
     {
@@ -43,7 +43,7 @@ function buildStats(data: DashboardData): DashboardStat[] {
       label: "Courses Completed",
       value: `${data.completedCourseCount}/${data.enrolledCourseCount}`,
       chartType: "ring",
-      accent: "#d8b4fe",
+      accent: "text-primary",
       progress: courseCompletion,
     },
   ];
@@ -57,20 +57,22 @@ export function DashboardShell({
   const recentCourses = data.courses.slice(0, 3);
 
   return (
-    <div className="min-h-screen text-on-surface antialiased">
+    <div className="min-h-screen bg-surface text-on-surface antialiased">
       <DailyQuoteModal quote={data.quote} />
       <LearningStreakModal
         streakDays={data.streakDays}
         activity={data.activity}
       />
 
-      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-6 space-y-6">
+      <div className="mx-auto max-w-7xl space-y-5 px-4 py-4 sm:space-y-6 sm:px-6 lg:px-6">
         <DashboardHero
           firstName={data.firstName}
           weeklyStudyHours={data.weeklyStudyHours}
         />
 
         <StatsGrid stats={buildStats(data)} />
+
+        <CoursesSection courses={recentCourses} />
 
         <section className="grid gap-4 xl:grid-cols-2">
           <ContinueLearningCard courses={data.courses} />
@@ -80,13 +82,14 @@ export function DashboardShell({
           />
         </section>
 
-        <CoursesSection courses={recentCourses} />
+  
 
         <CreateCoursePrompt />
 
-        {/* Full-width Calendar section at the bottom */}
         <section className="w-full">
-          <Calendar selected={new Date()} />
+          <Calendar
+            selected={new Date()}
+          />
         </section>
       </div>
     </div>

@@ -55,7 +55,7 @@ function Input({
           <input
             className={`w-full ${
               icon ? "pl-11" : "pl-4"
-            } ${shouldShowToggle ? "pr-11" : "pr-4"} py-3 bg-surface-container-low border-none rounded-sm focus:bg-surface-container-lowest transition-all duration-200 outline-none placeholder:text-outline/60 placeholder:text-xs placeholder:tracking-wide text-sm ring-1 ring-transparent focus:ring-1 focus:ring-primary/5`}
+            } ${shouldShowToggle ? "pr-11" : "pr-4"} py-3 bg-surface-container-low border-none  rounded-sm focus:bg-surface-container-lowest transition-all duration-200 outline-none placeholder:text-outline/60 placeholder:text-xs placeholder:tracking-wide text-sm ring-1 ring-transparent focus:ring-1 focus:ring-primary/5`}
             id={id}
             type={inputType}
             value={value}

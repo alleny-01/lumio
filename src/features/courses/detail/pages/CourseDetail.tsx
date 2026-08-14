@@ -57,9 +57,9 @@ function CourseDetailPage() {
       showToast({
         type: "info",
         title: "Already Enrolled",
-        description: "Redirecting to your enrolled courses.",
+        description: "Opening the course viewer.",
       });
-      navigate("/learning");
+      navigate(`/viewer?course=${courseId}`);
       return;
     }
 
@@ -71,7 +71,7 @@ function CourseDetailPage() {
         title: "Course Enrolled!",
         description: `Successfully enrolled in ${course.title}.`,
       });
-      navigate("/learning");
+      navigate(`/viewer?course=${courseId}`);
       return;
     }
 
@@ -98,7 +98,7 @@ function CourseDetailPage() {
         title: "Course Enrolled!",
         description: `Successfully enrolled in ${course.title}.`,
       });
-      navigate("/learning");
+      navigate(`/viewer?course=${courseId}`);
     } finally {
       setIsEnrolling(false);
     }

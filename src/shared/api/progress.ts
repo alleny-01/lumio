@@ -1,11 +1,49 @@
 import { supabase } from "@/lib/supabase/client";
 
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function listLessonProgress(userId: string, courseId: string) {
   return supabase
     .from("lesson_progress")
     .select("*")
     .eq("user_id", userId)
     .eq("course_id", courseId);
+}
+
+export function listCompletedLessonProgress(userId: string) {
+  return supabase
+    .from("lesson_progress")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_completed", true);
+}
+
+export async function recordLessonCompletionActivity(
+  userId: string,
+  durationMinutes: number,
+) {
+  const activityDate = localDateKey();
+  const { data: current, error: currentError } = await supabase
+    .from("study_activity")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("activity_date", activityDate)
+    .maybeSingle();
+
+  if (currentError) return { data: null, error: currentError };
+
+  return upsertStudyActivity({
+    user_id: userId,
+    activity_date: activityDate,
+    minutes_studied:
+      Number(current?.minutes_studied ?? 0) + Math.max(1, durationMinutes || 0),
+    lessons_completed: Number(current?.lessons_completed ?? 0) + 1,
+  });
 }
 
 export function markLessonComplete(

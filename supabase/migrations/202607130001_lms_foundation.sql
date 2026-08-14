@@ -2,7 +2,7 @@ create extension if not exists "pgcrypto";
 
 create type public.course_status as enum ('draft', 'saved', 'published');
 create type public.course_difficulty as enum ('beginner', 'intermediate', 'advanced');
-create type public.resource_kind as enum ('document', 'image', 'link', 'archive', 'other');
+create type public.resource_kind as enum ('document', 'code', 'image', 'link', 'archive', 'other');
 create type public.theme_preference as enum ('light', 'dark', 'system');
 create type public.auth_provider as enum ('email', 'google');
 
@@ -27,6 +27,7 @@ create table public.courses (
   title text not null,
   slug text not null,
   description text not null default '',
+  learning_outcomes text[] not null default '{}',
   thumbnail_url text,
   category text not null default 'Design',
   difficulty public.course_difficulty not null default 'beginner',
@@ -38,7 +39,6 @@ create table public.courses (
   published_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint courses_instructor_id_fkey foreign key (instructor_id) references public.profiles(id) on delete cascade,
   constraint courses_slug_unique unique (slug)
 );
 
@@ -74,6 +74,8 @@ create table public.lesson_resources (
   title text not null,
   file_path text,
   external_url text,
+  file_name text,
+  file_size text,
   resource_kind public.resource_kind not null default 'document',
   created_at timestamptz not null default now(),
   check (file_path is not null or external_url is not null)
@@ -155,18 +157,23 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, first_name, last_name, auth_provider)
+  insert into public.profiles (id, email, first_name, last_name, avatar_url, auth_provider)
   values (
     new.id,
     coalesce(new.email, ''),
-    new.raw_user_meta_data ->> 'first_name',
-    new.raw_user_meta_data ->> 'last_name',
+    coalesce(new.raw_user_meta_data ->> 'first_name', new.raw_user_meta_data ->> 'given_name'),
+    coalesce(new.raw_user_meta_data ->> 'last_name', new.raw_user_meta_data ->> 'family_name'),
+    coalesce(new.raw_user_meta_data ->> 'avatar_url', new.raw_user_meta_data ->> 'picture'),
     case
       when new.app_metadata ->> 'provider' = 'google' then 'google'::public.auth_provider
       else 'email'::public.auth_provider
     end
   )
-  on conflict (id) do nothing;
+  on conflict (id) do update set
+    email = excluded.email,
+    first_name = coalesce(public.profiles.first_name, excluded.first_name),
+    last_name = coalesce(public.profiles.last_name, excluded.last_name),
+    avatar_url = coalesce(public.profiles.avatar_url, excluded.avatar_url);
 
   return new;
 end;
@@ -348,8 +355,21 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values
   ('avatars', 'avatars', true, 2097152, array['image/jpeg', 'image/png', 'image/webp']),
   ('course-thumbnails', 'course-thumbnails', true, 5242880, array['image/jpeg', 'image/png', 'image/webp']),
-  ('lesson-resources', 'lesson-resources', false, 10485760, array['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'application/zip'])
-on conflict (id) do nothing;
+  ('lesson-resources', 'lesson-resources', true, 10485760, array[
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/markdown',
+    'text/plain',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/zip'
+  ])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 create policy "users manage own avatar files"
 on storage.objects for all
@@ -357,14 +377,29 @@ to authenticated
 using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text)
 with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
 
+create policy "public view avatars"
+on storage.objects for select
+to public
+using (bucket_id = 'avatars');
+
 create policy "instructors manage course thumbnails"
 on storage.objects for all
 to authenticated
 using (bucket_id = 'course-thumbnails' and (storage.foldername(name))[1] = auth.uid()::text)
 with check (bucket_id = 'course-thumbnails' and (storage.foldername(name))[1] = auth.uid()::text);
 
+create policy "public view course thumbnails"
+on storage.objects for select
+to public
+using (bucket_id = 'course-thumbnails');
+
 create policy "instructors manage lesson resources"
 on storage.objects for all
 to authenticated
 using (bucket_id = 'lesson-resources' and (storage.foldername(name))[1] = auth.uid()::text)
 with check (bucket_id = 'lesson-resources' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "authenticated users view lesson resources"
+on storage.objects for select
+to authenticated
+using (bucket_id = 'lesson-resources');

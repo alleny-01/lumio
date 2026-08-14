@@ -3,19 +3,19 @@ import { categories } from "../constants";
 interface FilterBarProps {
   category: string;
   difficulty: string;
-  minimumRating: number;
+  publishDateSort: string;
   onCategoryChange: (value: string) => void;
   onDifficultyChange: (value: string) => void;
-  onMinimumRatingChange: (value: number) => void;
+  onPublishDateSortChange: (value: string) => void;
 }
 
 function FilterBar({
   category,
   difficulty,
-  minimumRating,
+  publishDateSort,
   onCategoryChange,
   onDifficultyChange,
-  onMinimumRatingChange,
+  onPublishDateSortChange,
 }: FilterBarProps) {
   return (
     <div className="mb-7 grid gap-3 rounded-sm border border-border/40 bg-surface-container-lowest p-3 sm:grid-cols-3">
@@ -49,16 +49,15 @@ function FilterBar({
       </label>
 
       <label className="space-y-1.5 text-[11px] font-light text-on-surface-variant">
-        Minimum rating
+        Publish date
         <select
-          value={minimumRating}
-          onChange={(event) => onMinimumRatingChange(Number(event.target.value))}
+          value={publishDateSort}
+          onChange={(event) => onPublishDateSortChange(event.target.value)}
           className="h-9 w-full rounded-sm bg-surface-container-low px-3 text-xs text-on-surface outline-none"
         >
-          <option value={0}>Any rating</option>
-          <option value={3}>3.0+</option>
-          <option value={4}>4.0+</option>
-          <option value={4.5}>4.5+</option>
+          <option value="default">Default</option>
+          <option value="newest">Newest to Oldest</option>
+          <option value="oldest">Oldest to Newest</option>
         </select>
       </label>
     </div>

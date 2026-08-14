@@ -11,17 +11,25 @@ interface LearningStreakModalProps {
 
 const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
-function buildWeek(activity: DashboardActivity[]) {
+function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildWeek(activity: DashboardActivity[], today: Date) {
   const activeDates = new Set(
-    activity.filter((item) => item.minutes > 0).map((item) => item.date),
+    activity
+      .filter((item) => item.minutes > 0 || item.lessonsCompleted > 0)
+      .map((item) => item.date),
   );
-  const today = new Date();
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(today);
     date.setDate(today.getDate() - (6 - index));
     return {
       label: dayLabels[date.getDay()] ?? "",
-      completed: activeDates.has(date.toISOString().slice(0, 10)),
+      completed: activeDates.has(localDateKey(date)),
       dateStr: date.toLocaleDateString(undefined, {
         weekday: "short",
         day: "numeric",
@@ -34,23 +42,33 @@ export function LearningStreakModal({
   streakDays,
   activity,
 }: LearningStreakModalProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const days = buildWeek(activity);
+  const [today, setToday] = useState(() => new Date());
+  const days = buildWeek(activity, today);
   const studiedToday = days[days.length - 1]?.completed ?? false;
+  const [isOpen, setIsOpen] = useState(() => {
+    const todayKey = localDateKey(new Date());
+    const storageKey = `lumio_streak_modal_seen_${todayKey}`;
+    return studiedToday && !sessionStorage.getItem(storageKey);
+  });
 
   useEffect(() => {
-    const todayKey = new Date().toISOString().slice(0, 10);
-    const storageKey = `lumio_streak_modal_seen_${todayKey}`;
-    const alreadySeen = sessionStorage.getItem(storageKey);
+    const timerId = window.setInterval(() => {
+      setToday(new Date());
+    }, 60_000);
+    return () => window.clearInterval(timerId);
+  }, []);
 
-    // Auto popup if studied today and not yet seen today
-    if (studiedToday && !alreadySeen) {
-      setIsOpen(true);
-    }
-  }, [studiedToday]);
+  useEffect(() => {
+    const todayKey = localDateKey(today);
+    const storageKey = `lumio_streak_modal_seen_${todayKey}`;
+    const timerId = window.setTimeout(() => {
+      setIsOpen(studiedToday && !sessionStorage.getItem(storageKey));
+    }, 0);
+    return () => window.clearTimeout(timerId);
+  }, [studiedToday, today]);
 
   const handleClose = () => {
-    const todayKey = new Date().toISOString().slice(0, 10);
+    const todayKey = localDateKey(today);
     const storageKey = `lumio_streak_modal_seen_${todayKey}`;
     sessionStorage.setItem(storageKey, "true");
     setIsOpen(false);
@@ -58,7 +76,6 @@ export function LearningStreakModal({
 
   return (
     <>
-      {/* Fixed floating button at bottom-right */}
       <div className="fixed bottom-6 right-6 z-40">
         <button
           type="button"
@@ -72,17 +89,14 @@ export function LearningStreakModal({
         </button>
       </div>
 
-      {/* Wide Modal Dialog */}
       {isOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
           <div className="relative w-full max-w-xl overflow-hidden rounded-sm border border-outline-variant/30 bg-surface-container-lowest p-6 sm:p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            {/* Ambient Background Glows */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <div className="absolute -left-20 top-0 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
               <div className="absolute -right-20 bottom-0 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
             </div>
 
-            {/* Close Button */}
             <button
               type="button"
               onClick={handleClose}
@@ -92,9 +106,7 @@ export function LearningStreakModal({
               <X size={18} strokeWidth={1.5} />
             </button>
 
-            {/* Modal Body */}
             <div className="relative z-10 flex flex-col items-center text-center">
-              {/* Flame Icon Badge */}
               <div className="relative">
                 <div className="absolute inset-0 animate-pulse rounded-full bg-primary/30 blur-xl" />
                 <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-primary/20 bg-gradient-to-br from-primary/15 via-surface-container-lowest to-surface-container-low shadow-md">
@@ -105,7 +117,6 @@ export function LearningStreakModal({
                 </div>
               </div>
 
-              {/* Number & Label */}
               <h2 className="mt-4 text-4xl font-semibold tracking-tight text-on-surface sm:text-5xl">
                 {streakDays}
               </h2>
@@ -113,7 +124,6 @@ export function LearningStreakModal({
                 Day Learning Streak
               </p>
 
-              {/* 7-Day Track Row */}
               <div className="mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                 {days.map((day, index) => (
                   <div
@@ -137,7 +147,6 @@ export function LearningStreakModal({
                 ))}
               </div>
 
-              {/* Message */}
               <div className="mt-6 space-y-1">
                 <p className="text-[15px] font-medium text-on-surface">
                   {studiedToday
@@ -151,7 +160,6 @@ export function LearningStreakModal({
                 </p>
               </div>
 
-              {/* Action Button */}
               <div className="mt-7 w-full sm:w-auto">
                 <Button
                   type="button"

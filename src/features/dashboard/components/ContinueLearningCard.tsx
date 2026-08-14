@@ -27,10 +27,10 @@ export function ContinueLearningCard({
       viewport={{ once: true, margin: "-60px" }}
       whileHover={{ y: -4 }}
       transition={{ duration: 0.28, ease: "easeOut" }}
-      className="overflow-hidden rounded-sm border border-border/40 bg-surface-container-lowest shadow-[0_12px_30px_-24px_rgba(15,23,42,0.35)]"
+      className="overflow-hidden rounded-sm  bg-surface-container-lowest shadow-[0_12px_30px_-24px_rgba(15,23,42,0.35)] transition-colors hover:border-primary/25"
     >
       {nextCourse ? (
-        <Link to={nextCourse.href} className="group grid h-full sm:grid-cols-[150px_1fr]">
+        <Link to={nextCourse.href} className="group grid h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:grid-cols-[150px_1fr]">
           <div className="relative min-h-32 overflow-hidden bg-surface-container-low">
             <img
               src={nextCourse.image}
@@ -89,7 +89,7 @@ export function ContinueLearningCard({
             </p>
             <Link
               to="/courses"
-              className="mt-1 inline-flex items-center gap-1 text-[11px] font-light text-primary"
+              className="mt-1 inline-flex items-center gap-1 rounded-sm text-[11px] font-light text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               Find a course
               <ArrowRight className="size-3" />

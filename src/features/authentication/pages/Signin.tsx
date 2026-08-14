@@ -27,7 +27,7 @@ function SigninPage(): React.JSX.Element {
     try {
       localStorage.setItem("lumio_sign_up_email", email);
     } catch {
-      
+      return;
     }
   };
 

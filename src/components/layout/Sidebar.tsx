@@ -26,20 +26,30 @@ function Sidebar({
   onToggleCollapsed,
   onCloseMobile,
 }: SidebarProps): React.JSX.Element {
-  const { session, setSession, isLoading, setIsLoading, setAuthError } =
+  const { session, userProfile, setSession, isLoading, setIsLoading, setAuthError } =
     useContext(LMSContext);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const userEmail = session?.user?.email ?? "";
   const userMeta = session?.user?.user_metadata;
+
+  const firstName = userProfile?.first_name ?? userMeta?.first_name ?? userMeta?.given_name ?? "";
+  const lastName = userProfile?.last_name ?? userMeta?.last_name ?? userMeta?.family_name ?? "";
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+
   const userName =
-    [userMeta?.first_name, userMeta?.last_name].filter(Boolean).join(" ") ||
+    fullName ||
     userMeta?.full_name ||
     userMeta?.name ||
     userEmail.split("@")[0] ||
     "User";
   const userInitial = userName.charAt(0).toUpperCase();
+  const avatarUrl =
+    userProfile?.avatar_url ||
+    userMeta?.avatar_url ||
+    userMeta?.picture ||
+    "";
 
   const signOut = async () => {
     try {
@@ -99,7 +109,7 @@ function Sidebar({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              className="hidden size-8 items-center justify-center rounded-sm text-outline transition-colors hover:bg-surface-container hover:text-on-surface md:inline-flex"
+              className="hidden size-8 items-center justify-center rounded-sm border-2 border-outline-variant text-outline transition-colors hover:bg-surface-container hover:text-on-surface md:inline-flex"
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               onClick={onToggleCollapsed}
             >
@@ -129,7 +139,7 @@ function Sidebar({
               onClick={onCloseMobile}
               className={({ isActive }) =>
                 cn(
-                  "group relative flex h-10 items-center gap-3 rounded-sm px-3 text-[12px] font-light tracking-wide text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface",
+                  "group relative flex h-10 items-center gap-3 rounded-sm px-3 text-[12px] font-light tracking-wide transition-colors hover:bg-surface-container hover:text-on-surface",
                   isActive && "bg-surface-container text-on-surface",
                   isCollapsed && "md:justify-center md:px-0",
                 )
@@ -170,14 +180,25 @@ function Sidebar({
               isCollapsed && "md:justify-center md:px-0",
             )}
           >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-[11px] font-medium text-on-primary-fixed">
-              {userInitial}
+            <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/40 bg-primary-fixed text-[11px] font-medium text-on-primary-fixed">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={userName}
+                  className="size-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : (
+                userInitial
+              )}
             </div>
             <div className={cn("min-w-0", isCollapsed && "md:hidden")}>
               <p className="truncate text-[12px] font-medium text-on-surface">
                 {userName}
               </p>
-              <p className="truncate text-[10px] font-light text-on-surface-variant">
+              <p className="truncate text-[10px] font-light">
                 {userEmail}
               </p>
             </div>

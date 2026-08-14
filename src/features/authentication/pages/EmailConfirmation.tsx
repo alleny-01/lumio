@@ -41,10 +41,8 @@ function EmailConfirmation(): React.JSX.Element {
         }
       });
     }
-    // If no code, user was just redirected here after signUp() — show "check your email"
   }, []);
 
-  // Countdown + redirect once confirmed
   useEffect(() => {
     if (status !== "success") return;
 
@@ -57,7 +55,6 @@ function EmailConfirmation(): React.JSX.Element {
     return () => clearTimeout(timer);
   }, [status, redirectIn, navigate]);
 
-  // Resend cooldown ticker
   useEffect(() => {
     if (cooldown <= 0) {
       if (cooldownRef.current) clearInterval(cooldownRef.current);
@@ -91,7 +88,6 @@ function EmailConfirmation(): React.JSX.Element {
     }
   };
 
-  // Poll for session - useful if the magic link signed the user in
   useEffect(() => {
     let polling: ReturnType<typeof setInterval> | null = null;
     if (status === "waiting") {
@@ -119,7 +115,6 @@ function EmailConfirmation(): React.JSX.Element {
 
   return (
     <main className="relative flex items-center justify-center min-h-screen px-4 py-10 bg-surface-container-low overflow-hidden">
-      {/* Ambient background accents */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 -left-24 w-72 h-72 rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full bg-primary/10 blur-3xl" />
@@ -135,7 +130,6 @@ function EmailConfirmation(): React.JSX.Element {
       </div>
 
       <div className="relative w-full sm:w-[420px]">
-        {/* Step progress */}
         <div className="flex items-center justify-center gap-2 mb-6">
           {steps.map((step, i) => (
             <div key={step.label} className="flex items-center gap-2">
@@ -153,16 +147,13 @@ function EmailConfirmation(): React.JSX.Element {
           ))}
         </div>
 
-        {/* Card */}
         <div className="relative rounded-md border border-outline-variant/15 bg-surface-container/80 backdrop-blur-xl shadow-[0_8px_40px_-12px_rgba(0,0,0,0.25)] p-7 sm:p-8 transition-all duration-300">
-          {/* subtle top hairline gradient */}
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
 
           <p className="font-extralight text-[11px] tracking-[0.2em] uppercase text-muted-foreground text-center">
             Lumio · Account setup
           </p>
 
-          {/* Icon */}
           <div className="relative flex items-center justify-center mt-6 mb-5">
             <div
               className={[
@@ -208,13 +199,11 @@ function EmailConfirmation(): React.JSX.Element {
               )}
             </div>
 
-            {/* orbiting ring while confirming */}
             {status === "confirming" && (
               <div className="absolute inset-0 m-auto w-24 h-24 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
             )}
           </div>
 
-          {/* Headline + copy */}
           <div className="text-center space-y-1.5">
             <h1 className="text-sm font-medium text-foreground">
               {status === "waiting" && "Check your inbox"}
@@ -242,7 +231,6 @@ function EmailConfirmation(): React.JSX.Element {
             </p>
           </div>
 
-          {/* Status detail block (waiting state) */}
           {status === "waiting" && (
             <div className="mt-6 rounded-xl border border-outline-variant/15 bg-surface-container-low/60 px-4 py-3 space-y-2.5">
               <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
@@ -272,7 +260,6 @@ function EmailConfirmation(): React.JSX.Element {
             </div>
           )}
 
-          {/* CTA area */}
           <div className="mt-7 flex flex-col items-center gap-3">
             {status === "success" && (
               <Button
@@ -326,7 +313,6 @@ function EmailConfirmation(): React.JSX.Element {
             )}
           </div>
 
-          {/* Trust indicators */}
           <div className="mt-7 pt-5 border-t border-outline-variant/10 flex items-center justify-center gap-4 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="material-symbols-outlined text-[14px]">

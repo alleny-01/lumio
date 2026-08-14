@@ -126,7 +126,7 @@ export const CourseHero: React.FC<CourseHeroProps> = ({
                 className="w-full sm:flex-1 h-10 text-[13px]"
               >
                 {isEnrolled
-                  ? "Go to My Learning"
+                  ? "Continue Learning"
                   : isEnrolling
                     ? "Enrolling..."
                     : "Enroll Now"}

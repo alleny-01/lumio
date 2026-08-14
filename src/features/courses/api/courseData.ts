@@ -1,7 +1,11 @@
-import { getCourse, listPublishedCourses } from "@/shared/api/courses";
+import {
+  getCourse,
+  listPublishedCourseEnrollmentCounts,
+  listPublishedCourses,
+} from "@/shared/api/courses";
 import type { Tables } from "@/shared/types/database";
-import { courses as fallbackCatalogCourses } from "../catalog/constants";
 import type { Course } from "../catalog/types/types";
+import type { SortOption } from "../catalog/types/types";
 import { COURSE_DETAIL } from "../detail/constants";
 import type {
   CourseDetail,
@@ -29,7 +33,12 @@ interface ModuleWithLessons extends Tables<"course_modules"> {
 
 interface DetailCourseRow extends CourseWithProfile {
   course_modules?: ModuleWithLessons[] | null;
+  lesson_resources?: Tables<"lesson_resources">[] | null;
 }
+
+const NEW_COURSE_WINDOW_DAYS = 14;
+const HOT_COURSE_PERCENTILE = 0.1;
+const HOT_COURSE_MIN_ENROLLMENTS = 20;
 
 function formatDuration(minutes: number) {
   if (!minutes) return "Self-paced";
@@ -46,7 +55,36 @@ function profileName(profile?: Tables<"profiles"> | null) {
   return fullName || profile?.email?.split("@")[0] || "Lumio Instructor";
 }
 
-function toCatalogCourse(course: CourseWithProfile): Course {
+function isNewCourse(publishedAt: string | null) {
+  if (!publishedAt) return false;
+  const publishedTime = new Date(publishedAt).getTime();
+  if (Number.isNaN(publishedTime)) return false;
+  const windowMs = NEW_COURSE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  return Date.now() - publishedTime <= windowMs;
+}
+
+function getHotEnrollmentThreshold(
+  rows: Array<Pick<Tables<"courses">, "enrolled_count">>,
+) {
+  const counts = rows
+    .map((row) => row.enrolled_count)
+    .filter((count) => count >= HOT_COURSE_MIN_ENROLLMENTS)
+    .sort((a, b) => b - a);
+  if (!counts.length) return Number.POSITIVE_INFINITY;
+  const index = Math.max(0, Math.ceil(counts.length * HOT_COURSE_PERCENTILE) - 1);
+  return counts[index] ?? Number.POSITIVE_INFINITY;
+}
+
+function toCatalogCourse(course: CourseWithProfile, hotThreshold: number): Course {
+  const tags: Course["tags"] = [];
+  if (isNewCourse(course.published_at)) tags.push("New");
+  if (
+    course.enrolled_count >= HOT_COURSE_MIN_ENROLLMENTS &&
+    course.enrolled_count >= hotThreshold
+  ) {
+    tags.push("Hot");
+  }
+
   return {
     id: course.id,
     title: course.title,
@@ -60,8 +98,8 @@ function toCatalogCourse(course: CourseWithProfile): Course {
     description: course.description,
     imageUrl: course.thumbnail_url ?? fallbackImage,
     imageAlt: `${course.title} thumbnail`,
-    badge: course.status === "published" ? "Published" : undefined,
-    badgeColor: "secondary",
+    tags,
+    publishedAt: course.published_at,
   };
 }
 
@@ -69,31 +107,39 @@ export async function loadCatalogCourses(params: {
   search: string;
   category: string;
   difficulty: string;
-  minimumRating: number;
+  publishDateSort: SortOption;
   page: number;
   pageSize: number;
 }) {
   try {
-    const { data, error, count } = await listPublishedCourses({
-      search: params.search || undefined,
-      category:
-        params.category && params.category !== "All Categories"
-          ? params.category
-          : undefined,
-      difficulty:
-        params.difficulty === "all"
-          ? undefined
-          : (params.difficulty as Course["difficulty"]),
-      minimumRating: params.minimumRating || undefined,
-      page: params.page,
-      pageSize: params.pageSize,
-    });
+    const [coursesResult, enrollmentResult] = await Promise.all([
+      listPublishedCourses({
+        search: params.search || undefined,
+        category:
+          params.category && params.category !== "All Categories"
+            ? params.category
+            : undefined,
+        difficulty:
+          params.difficulty === "all"
+            ? undefined
+            : (params.difficulty as Course["difficulty"]),
+        publishDateSort: params.publishDateSort,
+        page: params.page,
+        pageSize: params.pageSize,
+      }),
+      listPublishedCourseEnrollmentCounts(),
+    ]);
 
-    if (error) throw error;
-    const catalogList = ((data ?? []) as CourseWithProfile[]).map(toCatalogCourse);
+    if (coursesResult.error) throw coursesResult.error;
+    if (enrollmentResult.error) throw enrollmentResult.error;
+
+    const hotThreshold = getHotEnrollmentThreshold(enrollmentResult.data ?? []);
+    const catalogList = ((coursesResult.data ?? []) as CourseWithProfile[]).map(
+      (course) => toCatalogCourse(course, hotThreshold),
+    );
     return {
       courses: catalogList,
-      total: count ?? catalogList.length,
+      total: coursesResult.count ?? catalogList.length,
       isFallback: false,
     };
   } catch {
@@ -157,12 +203,14 @@ export async function loadCourseDetail(courseId: string): Promise<CourseDetail> 
     const course = data as DetailCourseRow;
     const modules = toCourseModules(course.course_modules ?? []);
 
-    let rawOutcomes: string[] = (course as any).learning_outcomes || (course as any).learningOutcomes || [];
+    let rawOutcomes: string[] = course.learning_outcomes || [];
     if (!rawOutcomes.length) {
       try {
         const cached = localStorage.getItem(`lumio_course_outcomes_${courseId}`);
         if (cached) rawOutcomes = JSON.parse(cached);
-      } catch {}
+      } catch {
+        rawOutcomes = [];
+      }
     }
 
     const outcomes = rawOutcomes.length > 0
@@ -180,7 +228,7 @@ export async function loadCourseDetail(courseId: string): Promise<CourseDetail> 
       description: course.description,
       overview: course.description,
       learningOutcomes: outcomes,
-      modules: modules.length ? modules : COURSE_DETAIL.modules,
+      modules,
       instructor: toInstructor(course.profiles),
       enrolledCount: course.enrolled_count,
       price: 0,
@@ -273,6 +321,92 @@ function toViewerLesson(lesson: LessonRow & { resources?: ResourceItem[] }): Vie
       "Capture the main idea, then apply it in the next practical step.",
     completed: Boolean(lesson.isCompleted),
     resources,
+  };
+}
+
+function toResourceItem(resource: Tables<"lesson_resources">): ResourceItem {
+  return {
+    id: resource.id,
+    title: resource.title,
+    filePath: resource.file_path ?? undefined,
+    externalUrl: resource.external_url ?? undefined,
+    fileName: resource.title,
+    fileSize: "Downloadable resource",
+    resourceKind: resource.resource_kind,
+  };
+}
+
+export async function loadViewerData(
+  courseId: string,
+  activeLessonId: string | null,
+  completedLessonIds: Set<string>,
+): Promise<ViewerData> {
+  const { data, error } = await getCourse(courseId);
+  if (error || !data) throw error ?? new Error("Unable to load course viewer.");
+
+  const course = data as DetailCourseRow;
+  const resourcesByLesson = new Map<string, ResourceItem[]>();
+  for (const resource of course.lesson_resources ?? []) {
+    if (!resource.lesson_id) continue;
+    const current = resourcesByLesson.get(resource.lesson_id) ?? [];
+    current.push(toResourceItem(resource));
+    resourcesByLesson.set(resource.lesson_id, current);
+  }
+
+  const modules = (course.course_modules ?? [])
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order);
+  const lessons = modules.flatMap((module) =>
+    (module.lessons ?? [])
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((lesson) => ({
+        ...lesson,
+        isCompleted: completedLessonIds.has(lesson.id),
+        resources: resourcesByLesson.get(lesson.id) ?? [],
+      })),
+  );
+
+  if (!lessons.length) {
+    throw new Error("This course has no lessons available yet.");
+  }
+
+  const activeIndex = Math.max(
+    0,
+    lessons.findIndex((lesson) => lesson.id === activeLessonId),
+  );
+  const activeLesson = toViewerLesson(lessons[activeIndex] ?? lessons[0]);
+  const nextLesson = lessons[activeIndex + 1]
+    ? toViewerLesson(lessons[activeIndex + 1])
+    : null;
+  const completedCount = lessons.filter((lesson) =>
+    completedLessonIds.has(lesson.id),
+  ).length;
+
+  return {
+    courseTitle: course.title,
+    chapters: modules.map((module) => {
+      const moduleLessons = (module.lessons ?? [])
+        .slice()
+        .sort((a, b) => a.sort_order - b.sort_order);
+      return {
+        id: module.id,
+        title: module.title,
+        lessonsLabel: `${moduleLessons.length} lessons`,
+        lessons: moduleLessons.map((lesson) => ({
+          id: lesson.id,
+          title: lesson.title,
+          durationMinutes: lesson.duration_minutes,
+          completed: completedLessonIds.has(lesson.id),
+          active: lesson.id === activeLesson.id,
+        })),
+      };
+    }),
+    activeLesson,
+    nextLesson,
+    progressPercent: Math.round((completedCount / lessons.length) * 100),
+    completedLessons: completedCount,
+    totalLessons: lessons.length,
   };
 }
 

@@ -28,7 +28,7 @@ export function WeeklyGoalCard({
       viewport={{ once: true, margin: "-60px" }}
       whileHover={{ y: -4 }}
       transition={{ duration: 0.28, ease: "easeOut", delay: 0.04 }}
-      className="rounded-sm border border-border/40 bg-surface-container-lowest p-4 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.35)]"
+      className="rounded-sm bg-surface-container-lowest p-4 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.35)] transition-colors hover:border-primary/25"
     >
       <div className="flex items-start justify-between gap-3">
         <div>

@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { LMSContext } from "@/contexts/LMSContext";
 import { updatePassword } from "@/shared/api/auth";
+import Input from "../ui/Input";
 import AuthenticationForm from "../components/AuthenticationForm";
 import AuthenticationHeader from "../components/AuthenticationHeader";
 import AuthenticationLayout from "../components/AuthenticationLayout";
-import Input from "../ui/Input";
 
 function ResetPassword(): React.JSX.Element {
   const navigate = useNavigate();

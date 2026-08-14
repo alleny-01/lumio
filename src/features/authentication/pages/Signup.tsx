@@ -41,6 +41,7 @@ function SignupPage(): React.JSX.Element {
     try {
       localStorage.setItem("lumio_sign_up_email", email);
     } catch {
+      return;
     }
   };
 
@@ -94,7 +95,7 @@ function SignupPage(): React.JSX.Element {
         onMouseLeave={() => setIsHovered(false)}
       >
         <div
-          className={`absolute inset-0 bg-no-repeat bg-right bg-cover transition-all duration-700 ease-in-out ${
+          className={`absolute inset-0 bg-no-repeat bg-center bg-cover transition-all duration-700 ease-in-out ${
             isHovered
               ? "scale-[1.2] shadow-[0_0_40px_rgba(168,85,247,0.4),0_0_80px_rgba(59,130,246,0.2)]"
               : "scale-100"

@@ -1,5 +1,6 @@
 import { useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import type { Session } from "@supabase/supabase-js";
 import { exchangeAuthCodeForSession, getCurrentSession } from "@/shared/api/auth";
 import { supabase } from "@/lib/supabase/client";
 import { PageSpinner } from "@/components/ui/PageSpinner";
@@ -13,7 +14,7 @@ export default function AuthCallback() {
     let isMounted = true;
     let hasHandledAuth = false;
 
-    const navigateToDashboard = (session: any) => {
+    const navigateToDashboard = (session: Session) => {
       if (!isMounted || hasHandledAuth) return;
       hasHandledAuth = true;
       setSession(session);
@@ -42,7 +43,8 @@ export default function AuthCallback() {
           navigateToDashboard(sessionData.session);
           return;
         }
-      } catch {
+      } catch (error) {
+        console.warn("Initial session check failed:", error);
       }
 
       const searchParams = new URLSearchParams(window.location.search);
@@ -72,7 +74,8 @@ export default function AuthCallback() {
             navigateToDashboard(finalSessionData.session);
             return;
           }
-        } catch {
+        } catch (error) {
+          console.warn("Auth callback exchange failed:", error);
         }
       }
 

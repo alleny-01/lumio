@@ -50,13 +50,30 @@ export function createEmptyDraft(): CourseBuilderDraft {
   };
 }
 
-export function draftFromCourse(course: Tables<"courses">): CourseBuilderDraft {
-  let storedOutcomes: string[] = (course as any).learning_outcomes || (course as any).learningOutcomes || [];
+interface LessonWithResources extends Tables<"lessons"> {
+  resources?: Tables<"lesson_resources">[];
+}
+
+interface ModuleWithLessons extends Tables<"course_modules"> {
+  lessons?: LessonWithResources[] | null;
+}
+
+export interface CourseWithBuilderRelations extends Tables<"courses"> {
+  course_modules?: ModuleWithLessons[] | null;
+  lesson_resources?: Tables<"lesson_resources">[] | null;
+  learningOutcomes?: string[];
+}
+
+export function draftFromCourse(course: CourseWithBuilderRelations): CourseBuilderDraft {
+  let storedOutcomes: string[] =
+    course.learning_outcomes || course.learningOutcomes || [];
   if (!storedOutcomes.length) {
     try {
       const cached = localStorage.getItem(`lumio_course_outcomes_${course.id}`);
       if (cached) storedOutcomes = JSON.parse(cached);
-    } catch {}
+    } catch {
+      storedOutcomes = [];
+    }
   }
 
   return {
@@ -70,8 +87,50 @@ export function draftFromCourse(course: Tables<"courses">): CourseBuilderDraft {
     previewVideoUrl: course.preview_video_url ?? "",
     status: course.status,
     learningOutcomes: storedOutcomes.length > 0 ? storedOutcomes.slice(0, 6) : ["", "", "", ""],
-    modules: [createEmptyModule()],
+    modules: draftModulesFromCourse(course),
   };
+}
+
+function draftModulesFromCourse(course: CourseWithBuilderRelations): BuilderModule[] {
+  const resourcesByLesson = new Map<string, Tables<"lesson_resources">[]>();
+  for (const resource of course.lesson_resources ?? []) {
+    if (!resource.lesson_id) continue;
+    const current = resourcesByLesson.get(resource.lesson_id) ?? [];
+    current.push(resource);
+    resourcesByLesson.set(resource.lesson_id, current);
+  }
+
+  const modules = (course.course_modules ?? [])
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((module) => ({
+      id: module.id,
+      persistedId: module.id,
+      title: module.title,
+      lessons: (module.lessons ?? [])
+        .slice()
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((lesson) => ({
+          id: lesson.id,
+          persistedId: lesson.id,
+          title: lesson.title,
+          description: lesson.description ?? "",
+          youtubeUrl: lesson.youtube_url,
+          durationMinutes: lesson.duration_minutes,
+          coreConcept: lesson.core_concept ?? "",
+          resources: (resourcesByLesson.get(lesson.id) ?? []).map((resource) => ({
+            id: resource.id,
+            title: resource.title,
+            resourceKind: resource.resource_kind,
+            file: null,
+            fileName: resource.title,
+            filePath: resource.file_path ?? "",
+            externalUrl: resource.external_url ?? "",
+          })),
+        })),
+    }));
+
+  return modules.length > 0 ? modules : [createEmptyModule()];
 }
 
 export function isValidYoutubeUrl(value: string) {

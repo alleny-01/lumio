@@ -1,4 +1,4 @@
-import { Camera, RotateCcw, Save, Trash2, Upload } from "lucide-react";
+import { RotateCcw, Save, Trash2, Upload, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { ProfileSettingsForm } from "../types";
 
@@ -32,14 +32,14 @@ export function ProfileSection({
 
   return (
     <section className="min-w-0 rounded-sm border border-border/30 bg-surface-container-lowest px-4 py-5 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.25)] sm:px-6 sm:py-6">
-      <div className="flex flex-col gap-5 border-b border-border/30 pb-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-5  pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-[15px] font-light text-on-background">
-            Profile
-          </h2>
-          <p className="mt-1 max-w-2xl text-[11px] font-light leading-5 text-on-surface-variant">
-            Keep your public Lumio identity current for students and instructors.
-          </p>
+          <div className="flex items-center gap-2 pb-4">
+            <UserRound className="size-4 text-primary" />
+            <h2 className="text-[15px] font-normal text-on-background">
+              Profile
+            </h2>
+          </div>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
           <Button
@@ -84,7 +84,7 @@ export function ProfileSection({
               <p className="text-[12px] font-medium text-on-background">
                 Profile photo
               </p>
-              <p className="mt-1 text-[11px] font-light leading-5 text-on-surface-variant">
+              <p className="mt-1 text-[11px] font-normal leading-5">
                 Use a clear square image. JPG, PNG, or WebP works best.
               </p>
             </div>
@@ -121,7 +121,7 @@ export function ProfileSection({
         </div>
 
         <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-          <label className="space-y-1.5 min-w-0">
+          <label className="min-w-0 overflow-hidden space-y-1.5">
             <span className="text-[11px] font-medium text-on-surface-variant">
               First name
             </span>
@@ -153,7 +153,7 @@ export function ProfileSection({
               onChange={(event) =>
                 onChange({ dateOfBirth: event.target.value })
               }
-              className="h-10 w-full min-w-0 max-w-full rounded-xl border border-border/40 bg-surface px-3 text-[13px] text-on-background outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/15 [color-scheme:light] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70"
+              className="block h-10 w-full min-w-0 max-w-full appearance-none overflow-hidden rounded-xl border border-border/40 bg-surface px-2 text-[13px] text-on-background outline-none transition [min-inline-size:0] focus:border-primary/50 focus:ring-2 focus:ring-primary/15 sm:px-3 [color-scheme:light] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70"
             />
           </label>
           <label className="space-y-1.5 sm:col-span-2">
@@ -172,14 +172,6 @@ export function ProfileSection({
             </span>
           </label>
         </div>
-      </div>
-
-      <div className="flex min-w-0 items-start gap-2 rounded-sm bg-surface-container-low px-4 py-3 text-[11px] leading-5 text-on-surface-variant sm:items-center">
-        <Camera className="size-3.5 shrink-0 text-primary" />
-        <span>
-          Avatar files are stored in the Supabase avatars bucket and the public
-          URL is saved to your profile.
-        </span>
       </div>
     </section>
   );

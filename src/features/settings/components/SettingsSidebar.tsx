@@ -13,11 +13,7 @@ export function SettingsSidebar({
   onSelect,
 }: SettingsSidebarProps) {
   return (
-    <aside className="hidden w-full shrink-0 rounded-sm  bg-surface-container-lowest p-3.5 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.15)] md:block">
-      <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
-        Settings
-      </p>
-
+    <aside className="hidden w-full shrink-0 rounded-sm bg-surface-container-lowest p-3.5 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.15)] md:block">
       <nav className="space-y-1">
         {items.map((item) => {
           const isActive = item.id === activeId;
@@ -36,7 +32,6 @@ export function SettingsSidebar({
               )}
               aria-pressed={isActive}
             >
-              {/* Active Left Pill */}
               {isActive && (
                 <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />
               )}
@@ -48,10 +43,10 @@ export function SettingsSidebar({
                     ? "text-primary"
                     : "text-on-surface-variant group-hover:text-on-surface",
                 )}
-                strokeWidth={1.5}
+                strokeWidth={1.75}
               />
 
-              <span className="min-w-0 truncate">{item.label}</span>
+              <span className="min-w-0 truncate text-black">{item.label}</span>
             </button>
           );
         })}
