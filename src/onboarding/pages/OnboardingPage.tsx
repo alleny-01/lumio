@@ -194,10 +194,15 @@ function OnboardingPage() {
               <motion.div
                 variants={fadeUp}
                 animate={{
-                  y: [0, -4, 0],
+                  y: [0, -1.5, -3, -4, -3, -1.5, 0],
                 }}
                 transition={{
-                  y: { duration: 3.6, repeat: Infinity, ease: "easeInOut" },
+                  y: {
+                    duration: 3.6,
+                    repeat: Infinity,
+                    ease: "linear",
+                    times: [0, 0.16, 0.33, 0.5, 0.67, 0.84, 1],
+                  },
                 }}
                 whileHover={{ scale: 1.035, y: -6 }}
                 className="relative mb-6 inline-flex overflow-hidden rounded-lg bg-[linear-gradient(110deg,rgba(15,23,42,0.16),rgba(255,255,255,0.92),rgba(15,23,42,0.12))] p-px shadow-[0_16px_38px_-30px_rgba(15,23,42,0.55)] will-change-transform"
