@@ -237,6 +237,7 @@ export function AccountSecuritySection({
             size="lg"
             className="w-full sm:w-auto"
             onClick={() => setShowDeleteConfirm(true)}
+            disabled = {true}
           >
             Delete
           </Button>

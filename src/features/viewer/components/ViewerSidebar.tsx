@@ -6,7 +6,6 @@ import {
   LogOut,
   X,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import type { ChapterItem } from "../types";
 
@@ -19,6 +18,7 @@ interface ViewerSidebarProps {
   completedLessons: number;
   totalLessons: number;
   onLessonSelect: (lessonId: string) => void;
+  onExitCourse: () => void;
   isMobileOpen: boolean;
   onCloseMobile: () => void;
 }
@@ -32,6 +32,7 @@ export function ViewerSidebar({
   completedLessons,
   totalLessons,
   onLessonSelect,
+  onExitCourse,
   isMobileOpen,
   onCloseMobile,
 }: ViewerSidebarProps) {
@@ -50,9 +51,6 @@ export function ViewerSidebar({
     }
     return initial;
   });
-
-  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
-
   const toggleModule = (moduleId: string) => {
     setExpandedModules((prev) => {
       const next = new Set(prev);
@@ -265,7 +263,7 @@ export function ViewerSidebar({
 
           <button
             type="button"
-            onClick={() => setIsExitModalOpen(true)}
+            onClick={onExitCourse}
             className="flex h-10 w-full items-center justify-center gap-2 rounded-sm border border-outline-variant/30 text-[12px] font-light text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
           >
             <LogOut size={15} strokeWidth={1.3} />
@@ -273,46 +271,6 @@ export function ViewerSidebar({
           </button>
         </div>
       </aside>
-
-      {isExitModalOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-sm border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-sm bg-primary/10">
-              <LogOut size={17} strokeWidth={1.3} className="text-primary" />
-            </div>
-            <div className="mt-4 text-center">
-              <h2 className="text-sm font-medium text-on-surface">
-                Exit Course
-              </h2>
-              <p className="mt-2 text-xs font-light leading-6 text-on-surface-variant">
-                Are you sure you want to exit? Your progress has been saved and
-                you can resume anytime.
-              </p>
-            </div>
-            <div className="mt-5 flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="flex-1"
-                onClick={() => setIsExitModalOpen(false)}
-              >
-                Continue Learning
-              </Button>
-              <Button
-                type="button"
-                size="lg"
-                className="flex-1"
-                onClick={() => {
-                  window.location.href = "/learning";
-                }}
-              >
-                Exit Course
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

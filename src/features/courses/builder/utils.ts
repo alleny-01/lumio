@@ -76,6 +76,9 @@ export function draftFromCourse(course: CourseWithBuilderRelations): CourseBuild
     }
   }
 
+  const resourceIdsToDelete: string[] = [];
+  const modules = draftModulesFromCourse(course, resourceIdsToDelete);
+
   return {
     id: course.id,
     slug: course.slug,
@@ -87,14 +90,38 @@ export function draftFromCourse(course: CourseWithBuilderRelations): CourseBuild
     previewVideoUrl: course.preview_video_url ?? "",
     status: course.status,
     learningOutcomes: storedOutcomes.length > 0 ? storedOutcomes.slice(0, 6) : ["", "", "", ""],
-    modules: draftModulesFromCourse(course),
+    resourceIdsToDelete,
+    modules,
   };
 }
 
-function draftModulesFromCourse(course: CourseWithBuilderRelations): BuilderModule[] {
+function resourceDedupeKey(resource: Tables<"lesson_resources">) {
+  return [
+    resource.lesson_id ?? "",
+    resource.resource_kind,
+    resource.title.trim().toLowerCase(),
+    resource.file_path ?? "",
+    resource.external_url ?? "",
+  ].join("|");
+}
+
+function draftModulesFromCourse(
+  course: CourseWithBuilderRelations,
+  resourceIdsToDelete: string[],
+): BuilderModule[] {
   const resourcesByLesson = new Map<string, Tables<"lesson_resources">[]>();
+  const resourceKeysByLesson = new Map<string, Set<string>>();
   for (const resource of course.lesson_resources ?? []) {
     if (!resource.lesson_id) continue;
+    const dedupeKey = resourceDedupeKey(resource);
+    const lessonKeys = resourceKeysByLesson.get(resource.lesson_id) ?? new Set();
+    if (lessonKeys.has(dedupeKey)) {
+      resourceIdsToDelete.push(resource.id);
+      continue;
+    }
+    lessonKeys.add(dedupeKey);
+    resourceKeysByLesson.set(resource.lesson_id, lessonKeys);
+
     const current = resourcesByLesson.get(resource.lesson_id) ?? [];
     current.push(resource);
     resourcesByLesson.set(resource.lesson_id, current);
@@ -120,6 +147,7 @@ function draftModulesFromCourse(course: CourseWithBuilderRelations): BuilderModu
           coreConcept: lesson.core_concept ?? "",
           resources: (resourcesByLesson.get(lesson.id) ?? []).map((resource) => ({
             id: resource.id,
+            persistedId: resource.id,
             title: resource.title,
             resourceKind: resource.resource_kind,
             file: null,

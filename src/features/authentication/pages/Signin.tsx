@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
 import { useContext, useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { LMSContext } from "@/contexts/LMSContext";
@@ -81,6 +82,14 @@ function SigninPage(): React.JSX.Element {
 
   return (
     <AuthenticationLayout>
+      <Link
+        to="/"
+        className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-lg border border-border/50 bg-background/80 px-3 py-2 text-[12px] font-medium text-muted-foreground shadow-sm backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:text-foreground sm:left-6 sm:top-6"
+      >
+        <ArrowLeft className="size-3.5" />
+        Back home
+      </Link>
+
       <AuthenticationForm>
         <div className="relative mb-8">
           <div className="mt-4">

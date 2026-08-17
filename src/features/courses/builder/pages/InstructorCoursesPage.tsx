@@ -16,7 +16,8 @@ import type { CourseBuilderDraft, InstructorCourse } from "../types";
 import { draftFromCourse } from "../utils";
 
 function statusClass(status: Tables<"courses">["status"]) {
-  if (status === "published") return "bg-secondary-container text-on-secondary-container";
+  if (status === "published")
+    return "bg-secondary-container text-on-secondary-container";
   if (status === "saved") return "bg-primary-fixed text-on-primary-fixed";
   return "bg-surface-container-high text-on-surface-variant";
 }
@@ -29,7 +30,9 @@ function InstructorCoursesPage(): React.JSX.Element {
     null,
   );
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<InstructorCourse | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<InstructorCourse | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   const loadCourses = useCallback(async () => {
@@ -59,11 +62,14 @@ function InstructorCoursesPage(): React.JSX.Element {
     if (course) {
       const { data, error } = await getCourseForBuilder(course.id);
       if (error || !data) {
-        setAuthError(error?.message ?? "Unable to load this course for editing.");
+        setAuthError(
+          error?.message ?? "Unable to load this course for editing.",
+        );
         showToast({
           type: "error",
           title: "Edit Failed",
-          description: error?.message ?? "Unable to load this course for editing.",
+          description:
+            error?.message ?? "Unable to load this course for editing.",
         });
         return;
       }
@@ -128,11 +134,14 @@ function InstructorCoursesPage(): React.JSX.Element {
                 className="rounded-sm border border-border/40 bg-surface-container-lowest"
               >
                 <Skeleton className="aspect-[4/3] w-full" />
-                <Skeleton className="mt-4 h-4 w-3/4" />
-                <Skeleton className="mt-3 h-3 w-full" />
-                <div className="mt-5 flex gap-2">
-                  <Skeleton className="h-7 w-16" />
-                  <Skeleton className="h-7 w-24" />
+                <div className="p-4">
+                  <Skeleton className="mt-4 h-3 w-20" />{" "}
+                  <Skeleton className="mt-4 h-4 w-3/4" />
+                  <Skeleton className="mt-3 h-3 w-full" />
+                  <div className="mt-5 flex gap-2">
+                    <Skeleton className="h-7 w-16" />
+                    <Skeleton className="h-7 w-24" />
+                  </div>
                 </div>
               </article>
             ))}

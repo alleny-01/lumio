@@ -12,6 +12,7 @@ interface ViewerShellProps {
   onLessonSelect: (lessonId: string) => void;
   onMarkComplete: () => void;
   onNextLesson: () => void;
+  onExitCourse: () => void;
   isCompleting: boolean;
 }
 
@@ -21,6 +22,7 @@ export function ViewerShell({
   onLessonSelect,
   onMarkComplete,
   onNextLesson,
+  onExitCourse,
   isCompleting,
 }: ViewerShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -37,6 +39,7 @@ export function ViewerShell({
           completedLessons={data.completedLessons}
           totalLessons={data.totalLessons}
           onLessonSelect={onLessonSelect}
+          onExitCourse={onExitCourse}
           isMobileOpen={isSidebarOpen}
           onCloseMobile={() => setIsSidebarOpen(false)}
         />

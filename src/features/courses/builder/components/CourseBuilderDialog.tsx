@@ -13,7 +13,9 @@ import {
 } from "@/shared/api/courses";
 import {
   createResource,
+  deleteResource,
   getPublicStorageUrl,
+  updateResource,
   uploadCourseThumbnail,
   uploadResourceFile,
 } from "@/shared/api/resources";
@@ -195,6 +197,17 @@ export function CourseBuilderDialog({
         (initialDraft?.modules ?? [])
           .flatMap((module) => module.lessons)
           .map((lesson) => lesson.persistedId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    [initialDraft],
+  );
+  const initialPersistedResourceIds = useMemo(
+    () =>
+      new Set(
+        (initialDraft?.modules ?? [])
+          .flatMap((module) => module.lessons)
+          .flatMap((lesson) => lesson.resources)
+          .map((resource) => resource.persistedId)
           .filter((id): id is string => Boolean(id)),
       ),
     [initialDraft],
@@ -523,6 +536,7 @@ export function CourseBuilderDialog({
           ]),
         );
 
+        const savedResourceIds = new Set<string>();
         for (const lessonRef of lessonRefs) {
           const savedModule = savedModuleBySortOrder.get(lessonRef.moduleIndex + 1);
           const savedLesson = savedModule
@@ -533,7 +547,12 @@ export function CourseBuilderDialog({
           if (!savedLesson) continue;
 
           for (const resource of lessonRef.lesson.resources) {
-            if (!resource.title || (!resource.file && !resource.externalUrl)) continue;
+            if (
+              !resource.title ||
+              (!resource.file && !resource.externalUrl && !resource.filePath)
+            ) {
+              continue;
+            }
 
             let filePath = resource.filePath ?? null;
             let externalUrl = resource.externalUrl || null;
@@ -549,17 +568,32 @@ export function CourseBuilderDialog({
               resourceKind = resourceKindFromFile(resource.file);
             }
 
-            const resourceResult = await createResource({
-              course_id: courseId,
-              lesson_id: savedLesson.id,
+            const resourcePayload = {
               title: resource.title,
               file_path: filePath,
               external_url: externalUrl,
               resource_kind: resourceKind,
-            });
+            };
+            const resourceResult = resource.persistedId
+              ? await updateResource(resource.persistedId, resourcePayload)
+              : await createResource({
+                  course_id: courseId,
+                  lesson_id: savedLesson.id,
+                  ...resourcePayload,
+                });
             if (resourceResult.error) throw resourceResult.error;
+            if (resourceResult.data?.id) savedResourceIds.add(resourceResult.data.id);
           }
         }
+
+        await Promise.all(
+          [
+            ...initialPersistedResourceIds,
+            ...(draft.resourceIdsToDelete ?? []),
+          ]
+            .filter((resourceId) => !savedResourceIds.has(resourceId))
+            .map((resourceId) => deleteResource(resourceId)),
+        );
       }
 
       if (shouldPublish) {
@@ -588,6 +622,7 @@ export function CourseBuilderDialog({
         slug: courseSlug,
         thumbnailUrl,
         thumbnailFile: null,
+        resourceIdsToDelete: [],
         status,
       }));
       clearRecoveryDraft();

@@ -7,6 +7,7 @@ import type {
 
 export interface BuilderResource {
   id: string;
+  persistedId?: string;
   title: string;
   resourceKind: ResourceKind;
   file?: File | null;
@@ -45,6 +46,7 @@ export interface CourseBuilderDraft {
   previewVideoUrl: string;
   status: CourseStatus;
   learningOutcomes?: string[];
+  resourceIdsToDelete?: string[];
   modules: BuilderModule[];
 }
 

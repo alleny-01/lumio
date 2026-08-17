@@ -1,5 +1,7 @@
-import { useContext, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { LogOut } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { LMSContext } from "@/contexts/LMSContext";
 import {
   buildFallbackViewerData,
@@ -14,8 +16,15 @@ import {
 import { ViewerShell } from "../components";
 import type { ViewerData } from "../types";
 
+interface PendingNavigation {
+  href: string;
+  to: string;
+  isInternal: boolean;
+}
+
 export default function ViewerPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { session, setAuthError } = useContext(LMSContext);
   const [viewerData, setViewerData] = useState<ViewerData | null>(null);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(
@@ -23,8 +32,88 @@ export default function ViewerPage() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [pendingNavigation, setPendingNavigation] =
+    useState<PendingNavigation | null>(null);
+  const [isExitPromptOpen, setIsExitPromptOpen] = useState(false);
+  const allowPageUnloadRef = useRef(false);
   const activeLessonId = searchParams.get("lesson");
   const courseId = searchParams.get("course") ?? "demo-course";
+
+  const requestViewerExit = (navigation: PendingNavigation | null = null) => {
+    setPendingNavigation(navigation);
+    setIsExitPromptOpen(true);
+  };
+
+  const cancelViewerExit = () => {
+    setIsExitPromptOpen(false);
+    setPendingNavigation(null);
+  };
+
+  const confirmViewerExit = () => {
+    const navigation = pendingNavigation;
+    setIsExitPromptOpen(false);
+    setPendingNavigation(null);
+
+    if (!navigation) {
+      navigate("/learning");
+      return;
+    }
+
+    if (navigation.isInternal) {
+      navigate(navigation.to);
+      return;
+    }
+
+    allowPageUnloadRef.current = true;
+    window.location.href = navigation.href;
+  };
+
+  useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const link = target.closest<HTMLAnchorElement>("a[href]");
+      if (!link || (link.target && link.target !== "_self")) return;
+
+      const url = new URL(link.href, window.location.href);
+      if (url.origin === window.location.origin && url.pathname === "/viewer") {
+        return;
+      }
+
+      event.preventDefault();
+      requestViewerExit({
+        href: url.href,
+        to: `${url.pathname}${url.search}${url.hash}`,
+        isInternal: url.origin === window.location.origin,
+      });
+    };
+
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => document.removeEventListener("click", handleDocumentClick, true);
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (allowPageUnloadRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -184,15 +273,56 @@ export default function ViewerPage() {
   }
 
   return (
-    <ViewerShell
-      data={data}
-      completedLessonIds={completedLessons}
-      onLessonSelect={selectLesson}
-      onMarkComplete={handleMarkComplete}
-      onNextLesson={() => {
-        if (data.nextLesson) selectLesson(data.nextLesson.id);
-      }}
-      isCompleting={isCompleting}
-    />
+    <>
+      <ViewerShell
+        data={data}
+        completedLessonIds={completedLessons}
+        onLessonSelect={selectLesson}
+        onMarkComplete={handleMarkComplete}
+        onNextLesson={() => {
+          if (data.nextLesson) selectLesson(data.nextLesson.id);
+        }}
+        onExitCourse={() => requestViewerExit()}
+        isCompleting={isCompleting}
+      />
+
+      {isExitPromptOpen ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-sm border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-sm bg-primary/10">
+              <LogOut size={17} strokeWidth={1.3} className="text-primary" />
+            </div>
+            <div className="mt-4 text-center">
+              <h2 className="text-sm font-medium text-on-surface">
+                Exit Course
+              </h2>
+              <p className="mt-2 text-xs font-light leading-6 text-on-surface-variant">
+                Are you sure you want to leave the course viewer? Your progress
+                has been saved and you can resume anytime.
+              </p>
+            </div>
+            <div className="mt-5 flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="flex-1"
+                onClick={cancelViewerExit}
+              >
+                Continue Learning
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                className="flex-1"
+                onClick={confirmViewerExit}
+              >
+                Exit Course
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

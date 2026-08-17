@@ -194,14 +194,14 @@ function OnboardingPage() {
               <motion.div
                 variants={fadeUp}
                 animate={{
-                  y: [0, -1.5, -3, -4, -3, -1.5, 0],
+                  y: [0, -4],
                 }}
                 transition={{
                   y: {
-                    duration: 3.6,
+                    duration: 1.8,
                     repeat: Infinity,
-                    ease: "linear",
-                    times: [0, 0.16, 0.33, 0.5, 0.67, 0.84, 1],
+                    repeatType: "mirror",
+                    ease: "easeInOut",
                   },
                 }}
                 whileHover={{ scale: 1.035, y: -6 }}
@@ -673,7 +673,7 @@ function OnboardingPage() {
               throughout every course.
             </p>
 
-            <div className="grid overflow-hidden rounded-xl border border-border divide-x divide-border sm:grid-cols-2">
+            <div className="grid overflow-hidden rounded-sm border border-border divide-x divide-border sm:grid-cols-2">
               <div className="group bg-background p-8 transition-colors duration-200 hover:bg-muted/40">
                 <div className="mb-5 flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-muted group-hover:border-border/80">
                   <span className="material-symbols-outlined text-[16px] text-muted-foreground">
